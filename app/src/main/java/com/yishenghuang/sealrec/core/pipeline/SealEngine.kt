@@ -34,6 +34,8 @@ enum class SealEngineState {
     Finalizing,
 }
 
+class EmptyRecordingException : IllegalStateException("Recording too short or empty")
+
 /**
  * Bounded single-consumer PCM pipeline:
  * AudioRecord -> Channel(32) -> digest + raw write + RMS.
@@ -41,7 +43,7 @@ enum class SealEngineState {
 class SealEngine(
     private val scope: CoroutineScope,
     private val keystore: KeystoreManager = KeystoreManager(),
-    private val audioConfig: AudioConfig = AudioConfig(),
+    private var audioConfig: AudioConfig = AudioConfig(),
     private val channelCapacity: Int = 32,
 ) {
     private val _state = MutableStateFlow(SealEngineState.Idle)
@@ -141,6 +143,17 @@ class SealEngine(
             )
 
             val raw = rawFile ?: error("No raw file")
+            val bytesPerSec =
+                audioConfig.sampleRate * audioConfig.channels * (audioConfig.bitsPerSample / 8)
+            val minBytes = (bytesPerSec / 10).coerceAtLeast(1) // ~100ms
+            if (raw.length() < minBytes) {
+                raw.delete()
+                rawFile = null
+                _state.value = SealEngineState.Idle
+                _elapsedMs.value = 0L
+                accumulatedMs = 0L
+                throw EmptyRecordingException()
+            }
             WavIO.writeFromRawFile(raw, outputWav, audioConfig.toWavFormat(), payload)
             raw.delete()
             rawFile = null

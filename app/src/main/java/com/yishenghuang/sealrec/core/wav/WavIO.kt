@@ -22,6 +22,19 @@ data class WavParseResult(
     val headerHexPreview: String,
 )
 
+/** PCM location inside a WAV without loading the full payload into memory. */
+data class WavLayout(
+    val format: WavFormat,
+    val dataOffset: Long,
+    val dataSize: Int,
+    val seal: SealPayload?,
+    val headerHexPreview: String,
+) {
+    val durationMs: Int
+        get() = if (format.byteRate <= 0) 0
+        else ((dataSize.toLong() * 1000L) / format.byteRate).toInt()
+}
+
 /**
  * Writes / reads PCM WAV files with an optional custom "seal" chunk between fmt and data.
  */
@@ -85,6 +98,21 @@ object WavIO {
     }
 
     fun parse(file: File): WavParseResult {
+        val layout = inspect(file)
+        val pcm = ByteArray(layout.dataSize)
+        RandomAccessFile(file, "r").use { raf ->
+            raf.seek(layout.dataOffset)
+            raf.readFully(pcm)
+        }
+        return WavParseResult(
+            format = layout.format,
+            pcmData = pcm,
+            seal = layout.seal,
+            headerHexPreview = layout.headerHexPreview,
+        )
+    }
+
+    fun inspect(file: File): WavLayout {
         RandomAccessFile(file, "r").use { raf ->
             val headerPreviewBytes = ByteArray(minOf(64, raf.length().toInt()))
             raf.readFully(headerPreviewBytes)
@@ -96,7 +124,8 @@ object WavIO {
 
             var format: WavFormat? = null
             var seal: SealPayload? = null
-            var pcm: ByteArray? = null
+            var dataOffset = -1L
+            var dataSize = -1
 
             while (raf.filePointer < raf.length()) {
                 if (raf.filePointer + 8 > raf.length()) break
@@ -123,8 +152,8 @@ object WavIO {
                         raf.seek(dataStart + size + (size % 2))
                     }
                     "data" -> {
-                        pcm = ByteArray(size)
-                        raf.readFully(pcm)
+                        dataOffset = dataStart
+                        dataSize = size
                         raf.seek(dataStart + size + (size % 2))
                     }
                     else -> {
@@ -134,11 +163,12 @@ object WavIO {
             }
 
             requireNotNull(format) { "Missing fmt chunk" }
-            requireNotNull(pcm) { "Missing data chunk" }
+            require(dataOffset >= 0 && dataSize >= 0) { "Missing data chunk" }
 
-            return WavParseResult(
+            return WavLayout(
                 format = format,
-                pcmData = pcm,
+                dataOffset = dataOffset,
+                dataSize = dataSize,
                 seal = seal,
                 headerHexPreview = Fingerprint.toHex(headerPreviewBytes),
             )

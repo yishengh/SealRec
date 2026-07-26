@@ -53,6 +53,7 @@ import java.util.Locale
 fun LibraryScreen(
     recordings: List<RecordingEntity>,
     playback: PlaybackState,
+    playbackEnabled: Boolean,
     onPlayToggle: (Long) -> Unit,
     onSeek: (Int) -> Unit,
     onRename: (Long, String) -> Unit,
@@ -97,6 +98,7 @@ fun LibraryScreen(
                         item = item,
                         active = active,
                         playing = active && playback.isPlaying,
+                        playbackEnabled = playbackEnabled,
                         positionMs = if (active) playback.positionMs else 0,
                         durationMs = if (active) {
                             playback.durationMs.takeIf { it > 0 } ?: item.durationMs.toInt()
@@ -132,6 +134,7 @@ private fun RecordingRow(
     item: RecordingEntity,
     active: Boolean,
     playing: Boolean,
+    playbackEnabled: Boolean,
     positionMs: Int,
     durationMs: Int,
     onPlayToggle: (Long) -> Unit,
@@ -213,11 +216,14 @@ private fun RecordingRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            IconButton(onClick = { onPlayToggle(item.id) }) {
+            IconButton(
+                onClick = { onPlayToggle(item.id) },
+                enabled = playbackEnabled || playing,
+            ) {
                 Icon(
                     imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (playing) "pause" else "play",
-                    tint = Teal,
+                    tint = if (playbackEnabled || playing) Teal else Slate.copy(alpha = 0.4f),
                 )
             }
             TextButton(onClick = { onVerify(item.id) }) {

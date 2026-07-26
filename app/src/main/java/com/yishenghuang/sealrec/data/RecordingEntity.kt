@@ -2,7 +2,6 @@ package com.yishenghuang.sealrec.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.yishenghuang.sealrec.core.verify.IntegrityStatus
 
 @Entity(tableName = "recordings")
 data class RecordingEntity(
@@ -15,6 +14,6 @@ data class RecordingEntity(
     val keyFingerprintHex: String?,
     val lastVerifyStatus: String? = null,
     val deviceTimeUtcMs: Long? = null,
+    /** Non-null means item is in recycle bin. */
+    val deletedAtMs: Long? = null,
 )
-
-fun IntegrityStatus.storageName(): String = name

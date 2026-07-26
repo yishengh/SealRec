@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SealRec" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.SealRec" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@color/seal_foam</item>
         <item name="android:navigationBarColor">@color/seal_foam</item>
         <item name="android:windowLightStatusBar">true</item>
