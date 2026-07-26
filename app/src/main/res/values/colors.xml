@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="seal_ink">#FF0E1A1F</color>
+    <color name="seal_teal">#FF0F7A6C</color>
+    <color name="seal_teal_bright">#FF17A392</color>
+    <color name="seal_foam">#FFF4F8F9</color>
+    <color name="seal_mist">#FFE8EEF0</color>
+    <color name="ic_launcher_background">#FF0F7A6C</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

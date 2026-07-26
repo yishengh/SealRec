@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SealRec" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/seal_foam</item>
+        <item name="android:navigationBarColor">@color/seal_foam</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.SealRec.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/seal_teal</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.SealRec</item>
+    </style>
+</resources>
