@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -27,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.data.RecordingEntity
 import com.yishenghuang.sealrec.service.SealRecordService
+import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 import com.yishenghuang.sealrec.ui.theme.Crimson
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,12 +48,14 @@ fun TrashScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background),
+            .background(scheme.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .sealContentColumn(),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 16.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {

@@ -35,6 +35,7 @@ import com.yishenghuang.sealrec.data.AppLanguage
 import com.yishenghuang.sealrec.data.AudioQuality
 import com.yishenghuang.sealrec.data.NightModeOption
 import com.yishenghuang.sealrec.data.UserSettings
+import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 
 @Composable
 fun SettingsScreen(
@@ -52,6 +53,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(scheme.background)
+            .sealContentColumn()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {

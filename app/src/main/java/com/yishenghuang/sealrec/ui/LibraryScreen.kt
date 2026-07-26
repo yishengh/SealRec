@@ -41,6 +41,7 @@ import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.core.audio.PlaybackState
 import com.yishenghuang.sealrec.data.RecordingEntity
 import com.yishenghuang.sealrec.service.SealRecordService
+import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 import com.yishenghuang.sealrec.ui.theme.Foam
 import com.yishenghuang.sealrec.ui.theme.Mist
 import com.yishenghuang.sealrec.ui.theme.Slate
@@ -66,7 +67,8 @@ fun LibraryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Foam, Mist))),
+            .background(Brush.verticalGradient(listOf(Foam, Mist)))
+            .sealContentColumn(),
     ) {
         Text(
             text = stringResource(R.string.library_title),

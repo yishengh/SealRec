@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.core.pipeline.SealEngineState
 import com.yishenghuang.sealrec.service.SealRecordService
+import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 import com.yishenghuang.sealrec.ui.theme.Foam
 import com.yishenghuang.sealrec.ui.theme.Ink
 import com.yishenghuang.sealrec.ui.theme.Mist
@@ -111,6 +112,7 @@ fun RecordScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .sealContentColumn()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {

@@ -5,15 +5,21 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Mic
@@ -22,6 +28,8 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +58,7 @@ import com.yishenghuang.sealrec.ui.SealRecViewModel
 import com.yishenghuang.sealrec.ui.SettingsScreen
 import com.yishenghuang.sealrec.ui.TrashScreen
 import com.yishenghuang.sealrec.ui.VerifyScreen
+import com.yishenghuang.sealrec.ui.layout.isExpandedWidth
 import com.yishenghuang.sealrec.ui.theme.SealRecTheme
 
 private const val TAB_RECORD = 0
@@ -91,13 +100,13 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
     val report by viewModel.report.collectAsStateWithLifecycle()
     val bars by viewModel.waveformBars.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
-    // Survive Activity recreate (language / night mode) so we stay on Settings.
     var tab by rememberSaveable { mutableIntStateOf(TAB_RECORD) }
     var overlayName by rememberSaveable { mutableStateOf(Overlay.None.name) }
     val overlay = Overlay.entries.find { it.name == overlayName } ?: Overlay.None
     fun setOverlay(value: Overlay) {
         overlayName = value.name
     }
+    val useRail = isExpandedWidth()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -168,80 +177,123 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
         return
     }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
+    @Composable
+    fun TabContent() {
+        when (tab) {
+            TAB_RECORD -> RecordScreen(
+                state = ui,
+                bars = bars,
+                onStart = { ensurePermsAndStart() },
+                onPause = { viewModel.pauseRecording(context) },
+                onResume = { viewModel.resumeRecording(context) },
+                onStop = { viewModel.stopRecording(context) },
+                onRepair = { viewModel.repairIncomplete() },
+                onDiscard = { viewModel.discardIncomplete() },
+            )
+            TAB_LIBRARY -> LibraryScreen(
+                recordings = recordings,
+                playback = playback,
+                playbackEnabled = when (ui.engineState) {
+                    SealEngineState.Idle -> true
+                    else -> false
+                },
+                onPlayToggle = { viewModel.togglePlayback(it) },
+                onSeek = { viewModel.seekPlayback(it) },
+                onRename = { id, name -> viewModel.renameRecording(id, name) },
+                onVerify = {
+                    viewModel.verifyRecording(it)
+                    tab = TAB_VERIFY
+                },
+                onExport = { viewModel.exportRecording(it) },
+                onDelete = { viewModel.deleteRecording(it) },
+            )
+            TAB_VERIFY -> VerifyScreen(
+                report = report,
+                onPickFile = { viewModel.verifyUri(it) },
+                onClear = { viewModel.clearReport() },
+            )
+            else -> SettingsScreen(
+                settings = settings,
+                trashCount = trash.size,
+                onLanguage = { viewModel.setLanguage(it) },
+                onNightMode = { viewModel.setNightMode(it) },
+                onQuality = { viewModel.setQuality(it) },
+                onNotifSounds = { viewModel.setAllowNotificationSounds(it) },
+                onOpenTrash = { setOverlay(Overlay.Trash) },
+                onOpenAbout = { setOverlay(Overlay.About) },
+            )
+        }
+    }
+
+    if (useRail) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        ) {
+            NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                NavigationRailItem(
                     selected = tab == TAB_RECORD,
                     onClick = { tab = TAB_RECORD },
                     icon = { Icon(Icons.Default.Mic, contentDescription = null) },
                     label = { Text(stringResource(R.string.tab_record)) },
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = tab == TAB_LIBRARY,
                     onClick = { tab = TAB_LIBRARY },
                     icon = { Icon(Icons.Default.Folder, contentDescription = null) },
                     label = { Text(stringResource(R.string.tab_library)) },
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = tab == TAB_VERIFY,
                     onClick = { tab = TAB_VERIFY },
                     icon = { Icon(Icons.Default.VerifiedUser, contentDescription = null) },
                     label = { Text(stringResource(R.string.tab_verify)) },
                 )
-                NavigationBarItem(
+                NavigationRailItem(
                     selected = tab == TAB_SETTINGS,
                     onClick = { tab = TAB_SETTINGS },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text(stringResource(R.string.tab_settings)) },
                 )
             }
-        },
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (tab) {
-                TAB_RECORD -> RecordScreen(
-                    state = ui,
-                    bars = bars,
-                    onStart = { ensurePermsAndStart() },
-                    onPause = { viewModel.pauseRecording(context) },
-                    onResume = { viewModel.resumeRecording(context) },
-                    onStop = { viewModel.stopRecording(context) },
-                    onRepair = { viewModel.repairIncomplete() },
-                    onDiscard = { viewModel.discardIncomplete() },
-                )
-                TAB_LIBRARY -> LibraryScreen(
-                    recordings = recordings,
-                    playback = playback,
-                    playbackEnabled = when (ui.engineState) {
-                        SealEngineState.Idle -> true
-                        else -> false
-                    },
-                    onPlayToggle = { viewModel.togglePlayback(it) },
-                    onSeek = { viewModel.seekPlayback(it) },
-                    onRename = { id, name -> viewModel.renameRecording(id, name) },
-                    onVerify = {
-                        viewModel.verifyRecording(it)
-                        tab = TAB_VERIFY
-                    },
-                    onExport = { viewModel.exportRecording(it) },
-                    onDelete = { viewModel.deleteRecording(it) },
-                )
-                TAB_VERIFY -> VerifyScreen(
-                    report = report,
-                    onPickFile = { viewModel.verifyUri(it) },
-                    onClear = { viewModel.clearReport() },
-                )
-                else -> SettingsScreen(
-                    settings = settings,
-                    trashCount = trash.size,
-                    onLanguage = { viewModel.setLanguage(it) },
-                    onNightMode = { viewModel.setNightMode(it) },
-                    onQuality = { viewModel.setQuality(it) },
-                    onNotifSounds = { viewModel.setAllowNotificationSounds(it) },
-                    onOpenTrash = { setOverlay(Overlay.Trash) },
-                    onOpenAbout = { setOverlay(Overlay.About) },
-                )
+            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
+                TabContent()
+            }
+        }
+    } else {
+        Scaffold(
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = tab == TAB_RECORD,
+                        onClick = { tab = TAB_RECORD },
+                        icon = { Icon(Icons.Default.Mic, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_record)) },
+                    )
+                    NavigationBarItem(
+                        selected = tab == TAB_LIBRARY,
+                        onClick = { tab = TAB_LIBRARY },
+                        icon = { Icon(Icons.Default.Folder, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_library)) },
+                    )
+                    NavigationBarItem(
+                        selected = tab == TAB_VERIFY,
+                        onClick = { tab = TAB_VERIFY },
+                        icon = { Icon(Icons.Default.VerifiedUser, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_verify)) },
+                    )
+                    NavigationBarItem(
+                        selected = tab == TAB_SETTINGS,
+                        onClick = { tab = TAB_SETTINGS },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_settings)) },
+                    )
+                }
+            },
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                TabContent()
             }
         }
     }

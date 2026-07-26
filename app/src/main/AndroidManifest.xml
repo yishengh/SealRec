@@ -44,6 +44,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.SealRec.Splash"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

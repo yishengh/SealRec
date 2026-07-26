@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.core.verify.IntegrityReport
 import com.yishenghuang.sealrec.core.verify.IntegrityStatus
+import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 import com.yishenghuang.sealrec.ui.theme.Amber
 import com.yishenghuang.sealrec.ui.theme.Crimson
 import com.yishenghuang.sealrec.ui.theme.Foam
@@ -52,6 +53,7 @@ fun VerifyScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Foam, Mist)))
+            .sealContentColumn()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
