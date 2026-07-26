@@ -1,10 +1,7 @@
 package com.yishenghuang.sealrec.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,17 +9,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -31,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.data.AppLanguage
@@ -64,15 +62,23 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(20.dp))
         SettingCard(title = stringResource(R.string.settings_language)) {
-            LanguageChips(
+            OptionList(
+                options = AppLanguage.entries,
                 selected = settings.language,
+                label = { lang ->
+                    if (lang == AppLanguage.System) {
+                        stringResource(R.string.lang_system)
+                    } else {
+                        lang.nativeLabel
+                    }
+                },
                 onSelect = onLanguage,
             )
         }
 
         Spacer(Modifier.height(16.dp))
         SettingCard(title = stringResource(R.string.settings_night)) {
-            OptionRow(
+            OptionList(
                 options = NightModeOption.entries,
                 selected = settings.nightMode,
                 label = { mode ->
@@ -88,7 +94,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
         SettingCard(title = stringResource(R.string.settings_quality)) {
-            OptionRow(
+            OptionList(
                 options = AudioQuality.entries,
                 selected = settings.quality,
                 label = { quality ->
@@ -107,7 +113,6 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = stringResource(R.string.settings_notif_sounds),
@@ -149,32 +154,47 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun LanguageChips(
-    selected: AppLanguage,
-    onSelect: (AppLanguage) -> Unit,
+private fun <T> OptionList(
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        AppLanguage.entries.forEach { lang ->
-            val label = if (lang == AppLanguage.System) {
-                stringResource(R.string.lang_system)
-            } else {
-                lang.nativeLabel
+    Column(modifier = Modifier.selectableGroup()) {
+        options.forEachIndexed { index, option ->
+            val isSelected = option == selected
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSelect(option) },
+                        role = Role.RadioButton,
+                    )
+                    .padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = isSelected,
+                    onClick = null,
+                    colors = RadioButtonDefaults.colors(
+                        selectedColor = scheme.primary,
+                    ),
+                )
+                Text(
+                    text = label(option),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isSelected) scheme.primary else scheme.onSurface,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
             }
-            FilterChip(
-                selected = lang == selected,
-                onClick = { onSelect(lang) },
-                label = { Text(label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = scheme.primary,
-                    selectedLabelColor = scheme.onPrimary,
-                ),
-            )
+            if (index < options.lastIndex) {
+                HorizontalDivider(
+                    color = scheme.onSurface.copy(alpha = 0.08f),
+                )
+            }
         }
     }
 }
@@ -192,34 +212,9 @@ private fun SettingCard(title: String?, content: @Composable () -> Unit) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 12.dp),
+                modifier = Modifier.padding(bottom = 8.dp),
             )
         }
         content()
-    }
-}
-
-@Composable
-private fun <T> OptionRow(
-    options: List<T>,
-    selected: T,
-    label: @Composable (T) -> String,
-    onSelect: (T) -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = option == selected,
-                onClick = { onSelect(option) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = scheme.primary,
-                    activeContentColor = scheme.onPrimary,
-                ),
-            ) {
-                Text(label(option), style = MaterialTheme.typography.labelLarge)
-            }
-        }
     }
 }

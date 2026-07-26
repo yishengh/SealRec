@@ -30,7 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -91,8 +91,13 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
     val report by viewModel.report.collectAsStateWithLifecycle()
     val bars by viewModel.waveformBars.collectAsStateWithLifecycle()
     val playback by viewModel.playback.collectAsStateWithLifecycle()
-    var tab by remember { mutableIntStateOf(TAB_RECORD) }
-    var overlay by remember { mutableStateOf(Overlay.None) }
+    // Survive Activity recreate (language / night mode) so we stay on Settings.
+    var tab by rememberSaveable { mutableIntStateOf(TAB_RECORD) }
+    var overlayName by rememberSaveable { mutableStateOf(Overlay.None.name) }
+    val overlay = Overlay.entries.find { it.name == overlayName } ?: Overlay.None
+    fun setOverlay(value: Overlay) {
+        overlayName = value.name
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -149,7 +154,7 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
     }
 
     if (overlay == Overlay.About) {
-        AboutScreen(onBack = { overlay = Overlay.None })
+        AboutScreen(onBack = { setOverlay(Overlay.None) })
         return
     }
     if (overlay == Overlay.Trash) {
@@ -158,7 +163,7 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
             onRestore = { viewModel.restoreFromTrash(it) },
             onPurge = { viewModel.purgeFromTrash(it) },
             onEmptyTrash = { viewModel.emptyTrash() },
-            onBack = { overlay = Overlay.None },
+            onBack = { setOverlay(Overlay.None) },
         )
         return
     }
@@ -234,8 +239,8 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
                     onNightMode = { viewModel.setNightMode(it) },
                     onQuality = { viewModel.setQuality(it) },
                     onNotifSounds = { viewModel.setAllowNotificationSounds(it) },
-                    onOpenTrash = { overlay = Overlay.Trash },
-                    onOpenAbout = { overlay = Overlay.About },
+                    onOpenTrash = { setOverlay(Overlay.Trash) },
+                    onOpenAbout = { setOverlay(Overlay.About) },
                 )
             }
         }
