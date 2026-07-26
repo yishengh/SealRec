@@ -8,15 +8,24 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.yishenghuang.sealrec.core.audio.AudioConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 private val Context.dataStore by preferencesDataStore("sealrec_settings")
 
-enum class AppLanguage(val tag: String) {
-    System(""),
-    English("en"),
-    ChineseSimplified("zh-CN"),
+enum class AppLanguage(val tag: String, val nativeLabel: String) {
+    System(tag = "", nativeLabel = ""),
+    English(tag = "en", nativeLabel = "English"),
+    ChineseSimplified(tag = "zh-CN", nativeLabel = "简体中文"),
+    ChineseTraditional(tag = "zh-TW", nativeLabel = "繁體中文"),
+    Japanese(tag = "ja", nativeLabel = "日本語"),
+    Korean(tag = "ko", nativeLabel = "한국어"),
+    Spanish(tag = "es", nativeLabel = "Español"),
+    French(tag = "fr", nativeLabel = "Français"),
+    German(tag = "de", nativeLabel = "Deutsch"),
+    PortugueseBrazil(tag = "pt-BR", nativeLabel = "Português"),
 }
 
 enum class NightModeOption(val mode: Int) {
@@ -56,12 +65,16 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLanguage(value: AppLanguage) {
         context.dataStore.edit { it[keyLang] = value.name }
-        applyLanguage(value)
+        withContext(Dispatchers.Main.immediate) {
+            applyLanguage(value)
+        }
     }
 
     suspend fun setNightMode(value: NightModeOption) {
         context.dataStore.edit { it[keyNight] = value.name }
-        AppCompatDelegate.setDefaultNightMode(value.mode)
+        withContext(Dispatchers.Main.immediate) {
+            AppCompatDelegate.setDefaultNightMode(value.mode)
+        }
     }
 
     suspend fun setQuality(value: AudioQuality) {

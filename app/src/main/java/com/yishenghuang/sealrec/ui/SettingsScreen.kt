@@ -3,6 +3,8 @@ package com.yishenghuang.sealrec.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +16,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -60,16 +64,8 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(20.dp))
         SettingCard(title = stringResource(R.string.settings_language)) {
-            OptionRow(
-                options = AppLanguage.entries,
+            LanguageChips(
                 selected = settings.language,
-                label = { lang ->
-                    when (lang) {
-                        AppLanguage.System -> stringResource(R.string.lang_system)
-                        AppLanguage.English -> stringResource(R.string.lang_en)
-                        AppLanguage.ChineseSimplified -> stringResource(R.string.lang_zh)
-                    }
-                },
                 onSelect = onLanguage,
             )
         }
@@ -150,6 +146,36 @@ fun SettingsScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LanguageChips(
+    selected: AppLanguage,
+    onSelect: (AppLanguage) -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AppLanguage.entries.forEach { lang ->
+            val label = if (lang == AppLanguage.System) {
+                stringResource(R.string.lang_system)
+            } else {
+                lang.nativeLabel
+            }
+            FilterChip(
+                selected = lang == selected,
+                onClick = { onSelect(lang) },
+                label = { Text(label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = scheme.primary,
+                    selectedLabelColor = scheme.onPrimary,
+                ),
+            )
+        }
     }
 }
 

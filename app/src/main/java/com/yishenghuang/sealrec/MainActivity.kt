@@ -5,7 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -59,7 +59,7 @@ private const val TAB_SETTINGS = 3
 
 private enum class Overlay { None, About, Trash }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val viewModel: SealRecViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
