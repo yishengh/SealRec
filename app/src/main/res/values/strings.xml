@@ -39,4 +39,10 @@
     <string name="action_verify">Verify</string>
     <string name="key_fingerprint">Key fingerprint %1$s</string>
     <string name="last_verify">Last verify: %1$s</string>
+    <string name="rename_title">Rename recording</string>
+    <string name="rename_label">File name</string>
+    <string name="rename_confirm">Save</string>
+    <string name="rename_cancel">Cancel</string>
+    <string name="rename_ok">Renamed</string>
+    <string name="rename_fail">Rename failed (invalid or duplicate name)</string>
 </resources>

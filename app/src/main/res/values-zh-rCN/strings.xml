@@ -40,4 +40,10 @@
     <string name="action_verify">鉴定</string>
     <string name="key_fingerprint">密钥指纹 %1$s</string>
     <string name="last_verify">最近鉴定：%1$s</string>
+    <string name="rename_title">重命名录音</string>
+    <string name="rename_label">文件名</string>
+    <string name="rename_confirm">保存</string>
+    <string name="rename_cancel">取消</string>
+    <string name="rename_ok">已重命名</string>
+    <string name="rename_fail">重命名失败（名称无效或已存在）</string>
 </resources>

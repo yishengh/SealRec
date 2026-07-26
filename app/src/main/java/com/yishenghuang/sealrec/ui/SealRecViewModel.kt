@@ -34,7 +34,7 @@ data class RecordUiState(
 class SealRecViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as SealRecApp
     private val repo = app.repository
-    private val player = RecordingPlayer()
+    private val player = RecordingPlayer(viewModelScope)
 
     val recordings: StateFlow<List<RecordingEntity>> =
         repo.observeRecordings().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -151,6 +151,25 @@ class SealRecViewModel(application: Application) : AndroidViewModel(application)
     fun togglePlayback(id: Long) {
         val entity = recordings.value.find { it.id == id } ?: return
         player.toggle(id, File(entity.filePath))
+    }
+
+    fun seekPlayback(positionMs: Int) {
+        player.seekTo(positionMs)
+    }
+
+    fun renameRecording(id: Long, newName: String) {
+        viewModelScope.launch {
+            val playingId = player.state.value.recordingId
+            if (playingId == id) {
+                player.stop()
+            }
+            val ok = repo.renameRecording(id, newName)
+            _ui.value = _ui.value.copy(
+                message = app.getString(
+                    if (ok) R.string.rename_ok else R.string.rename_fail,
+                ),
+            )
+        }
     }
 
     fun deleteRecording(id: Long) {

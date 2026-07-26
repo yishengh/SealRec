@@ -74,6 +74,36 @@ class RecordingRepository(
         dao.deleteById(id)
     }
 
+    suspend fun renameRecording(id: Long, rawName: String): Boolean = withContext(Dispatchers.IO) {
+        val entity = dao.getById(id) ?: return@withContext false
+        val trimmed = rawName.trim()
+        if (trimmed.isEmpty()) return@withContext false
+
+        var base = trimmed
+            .replace(Regex("""[\\/:*?"<>|]"""), "_")
+            .trim('.')
+        if (base.isBlank()) return@withContext false
+        if (!base.endsWith(".wav", ignoreCase = true)) {
+            base = "$base.wav"
+        }
+
+        val oldFile = File(entity.filePath)
+        val target = File(oldFile.parentFile ?: recordingsDir(), base)
+        if (target.absolutePath != oldFile.absolutePath) {
+            if (target.exists()) return@withContext false
+            if (!oldFile.exists() || !oldFile.renameTo(target)) {
+                return@withContext false
+            }
+        }
+        dao.updateFileMeta(
+            id = id,
+            fileName = target.name,
+            filePath = target.absolutePath,
+            fileSizeBytes = target.length(),
+        )
+        true
+    }
+
     suspend fun exportToMusic(file: File): Uri? = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

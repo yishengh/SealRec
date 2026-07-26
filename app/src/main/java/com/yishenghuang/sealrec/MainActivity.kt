@@ -143,6 +143,8 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
                     recordings = recordings,
                     playback = playback,
                     onPlayToggle = { viewModel.togglePlayback(it) },
+                    onSeek = { viewModel.seekPlayback(it) },
+                    onRename = { id, name -> viewModel.renameRecording(id, name) },
                     onVerify = {
                         viewModel.verifyRecording(it)
                         tab = 2

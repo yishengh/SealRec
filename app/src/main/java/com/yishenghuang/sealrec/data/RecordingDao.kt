@@ -20,6 +20,9 @@ interface RecordingDao {
     @Query("UPDATE recordings SET lastVerifyStatus = :status WHERE id = :id")
     suspend fun updateVerifyStatus(id: Long, status: String)
 
+    @Query("UPDATE recordings SET fileName = :fileName, filePath = :filePath, fileSizeBytes = :fileSizeBytes WHERE id = :id")
+    suspend fun updateFileMeta(id: Long, fileName: String, filePath: String, fileSizeBytes: Long)
+
     @Query("DELETE FROM recordings WHERE id = :id")
     suspend fun deleteById(id: Long)
 }
