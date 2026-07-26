@@ -36,7 +36,7 @@ import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.ui.layout.sealContentColumn
 
 private const val SUPPORT_EMAIL = "sealrec@fastmail.com"
-private const val PRIVACY_URL = "https://sealrec-privacy.netlify.app/#en"
+private const val PRIVACY_URL = "https://sealrec-privacy.netlify.app/"
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
