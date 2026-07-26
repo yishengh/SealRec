@@ -79,4 +79,6 @@
     <string name="about_not_body">SealRec ne peut pas prouver qui parlait, où cela s\'est passé, ni que le son n\'était pas mis en scène ou rejoué. Il prouve seulement que le fichier numérique n\'a pas été altéré depuis le scellage.</string>
     <string name="about_time_title">À propos de DeviceTime</string>
     <string name="about_time_body">L\'horodatage du sceau vient de l\'horloge locale de l\'appareil, pas d\'une autorité d\'horodatage (TSA). Si l\'horloge était fausse, l\'heure scellée le sera aussi. Traitez-la comme un indice, pas comme une preuve de quand l\'enregistrement a été fait.</string>
+    <string name="about_contact_title">Contact et confidentialité</string>
+    <string name="about_privacy">Politique de confidentialité</string>
 </resources>

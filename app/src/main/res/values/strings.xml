@@ -78,4 +78,6 @@
     <string name="about_not_body">SealRec cannot prove who was speaking, where the recording happened, or that the sounds themselves were not staged or replayed from a speaker. It only proves the digital file has not been altered since it was sealed.</string>
     <string name="about_time_title">About DeviceTime</string>
     <string name="about_time_body">The timestamp embedded in each seal comes from the device\'s local clock, not a trusted timestamping authority (TSA). If the system clock was wrong or changed, the sealed time will reflect that. Treat it as a hint, not as proof of when the recording was made.</string>
+    <string name="about_contact_title">Contact &amp; privacy</string>
+    <string name="about_privacy">Privacy policy</string>
 </resources>

@@ -79,4 +79,6 @@
     <string name="about_not_body">SealRec kann nicht beweisen, wer sprach, wo aufgenommen wurde, oder dass der Klang nicht gestellt bzw. über Lautsprecher abgespielt wurde. Es beweist nur, dass die digitale Datei seit der Versiegelung unverändert ist.</string>
     <string name="about_time_title">Zu DeviceTime</string>
     <string name="about_time_body">Der eingebettete Zeitstempel kommt von der lokalen Geräteuhr, nicht von einer vertrauenswürdigen Zeitstempel-Stelle (TSA). War die Uhr falsch, ist auch die versiegelte Zeit falsch. Als Hinweis nutzen, nicht als Beweis des Aufnahmezeitpunkts.</string>
+    <string name="about_contact_title">Kontakt &amp; Datenschutz</string>
+    <string name="about_privacy">Datenschutzerklärung</string>
 </resources>

@@ -79,4 +79,6 @@
     <string name="about_not_body">SealRec 无法证明说话人身份、录音地点，也无法证明声音本身不是摆拍或经扬声器重放。它只证明数字文件自密封以来未被修改。</string>
     <string name="about_time_title">关于设备时间</string>
     <string name="about_time_body">密封中嵌入的时间戳来自设备本地时钟，而非可信时间戳机构（TSA）。若系统时间不准或被修改，密封时间也会随之偏差。请将其视为参考信息，而非录音时间的证明。</string>
+    <string name="about_contact_title">联系与隐私</string>
+    <string name="about_privacy">隐私政策</string>
 </resources>

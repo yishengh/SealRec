@@ -79,4 +79,6 @@
     <string name="about_not_body">話者の身元、録音場所、音そのものが演技やスピーカー再生でないことは証明できません。封印後にデジタルファイルが改ざんされていないことだけを証明します。</string>
     <string name="about_time_title">DeviceTime について</string>
     <string name="about_time_body">封印に埋め込まれた時刻は端末のローカル時計由来で、信頼できる時刻認証局（TSA）ではありません。時計がずれていれば封印時刻もずれます。録音時刻の証明ではなく参考情報として扱ってください。</string>
+    <string name="about_contact_title">連絡先とプライバシー</string>
+    <string name="about_privacy">プライバシーポリシー</string>
 </resources>

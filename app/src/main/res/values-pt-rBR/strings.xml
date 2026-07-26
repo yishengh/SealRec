@@ -79,4 +79,6 @@
     <string name="about_not_body">O SealRec não pode provar quem falou, onde foi gravado, nem que o som não foi encenado ou reproduzido por um alto-falante. Ele só prova que o arquivo digital não foi alterado desde a selagem.</string>
     <string name="about_time_title">Sobre DeviceTime</string>
     <string name="about_time_body">O carimbo embutido no selo vem do relógio local do dispositivo, não de uma autoridade de carimbo de tempo (TSA). Se o relógio estava errado, o tempo selado também estará. Trate como pista, não como prova de quando a gravação foi feita.</string>
+    <string name="about_contact_title">Contato e privacidade</string>
+    <string name="about_privacy">Política de privacidade</string>
 </resources>

@@ -79,4 +79,6 @@
     <string name="about_not_body">SealRec no puede demostrar quién habló, dónde ocurrió ni que el sonido no fue escenificado o reproducido por un altavoz. Solo demuestra que el archivo digital no se alteró desde el sellado.</string>
     <string name="about_time_title">Sobre DeviceTime</string>
     <string name="about_time_body">La marca de tiempo del sello viene del reloj local del dispositivo, no de una autoridad de sellado de tiempo (TSA). Si el reloj estaba mal, el tiempo sellado también. Úsalo como pista, no como prueba de cuándo se grabó.</string>
+    <string name="about_contact_title">Contacto y privacidad</string>
+    <string name="about_privacy">Política de privacidad</string>
 </resources>
