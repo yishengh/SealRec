@@ -42,6 +42,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Local validation must never replace an installed release or its recordings.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             optimization {
@@ -56,11 +61,16 @@ android {
     buildFeatures {
         compose = true
     }
+    bundle { language { enableSplit = false } } // All selectable languages must work offline.
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    maxHeapSize = "128m" // Long-audio tests must pass without whole-file allocations.
 }
 
 dependencies {

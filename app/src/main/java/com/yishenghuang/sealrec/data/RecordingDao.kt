@@ -17,7 +17,10 @@ interface RecordingDao {
     @Query("SELECT * FROM recordings WHERE id = :id")
     suspend fun getById(id: Long): RecordingEntity?
 
-    @Query("SELECT fileName FROM recordings WHERE deletedAtMs IS NULL")
+    @Query("SELECT * FROM recordings WHERE filePath = :path LIMIT 1")
+    suspend fun getByPath(path: String): RecordingEntity?
+
+    @Query("SELECT fileName FROM recordings")
     suspend fun activeFileNames(): List<String>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

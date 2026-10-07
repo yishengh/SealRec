@@ -1,0 +1,6 @@
+
+com.yishenghuang.sealrec.InterfaceInstrumentedTest:.
+
+Time: 17.41
+
+OK (1 test)

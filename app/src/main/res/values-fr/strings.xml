@@ -23,7 +23,7 @@
     <string name="export_ok">Exporté vers Music/SealRec</string>
     <string name="export_fail">Échec de l\'export</string>
     <string name="offline_badge">Entièrement hors ligne · aucune permission réseau</string>
-    <string name="brand_subtitle">Scellé par clé matérielle · vérification sur l\'appareil</string>
+    <string name="brand_subtitle">Clé du périphérique · vérification locale</string>
     <string name="library_title">Bibliothèque</string>
     <string name="library_subtitle">Fichiers scellés locaux · vérification hors ligne</string>
     <string name="library_empty">Aucun enregistrement</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">Vider la corbeille</string>
     <string name="about_title">À propos de SealRec</string>
     <string name="about_proves_title">Ce que SealRec prouve</string>
-    <string name="about_proves_body">Chaque enregistrement est haché échantillon par échantillon et signé avec une clé matérielle qui ne quitte jamais cet appareil. Un résultat VERT prouve que les octets audio sont exactement ceux du micro et que la signature vient de la clé de cet appareil.</string>
+    <string name="about_proves_body">Le hash PCM correspond à la signature de la clé intégrée. Cela ne prouve pas une identité. Le format audio et la date ne sont pas signés. Les enregistrements réparés sont scellés lors de la récupération. Les WAV ne sont pas chiffrés.</string>
     <string name="about_not_title">Ce qu\'il ne prouve PAS</string>
     <string name="about_not_body">SealRec ne peut pas prouver qui parlait, où cela s\'est passé, ni que le son n\'était pas mis en scène ou rejoué. Il prouve seulement que le fichier numérique n\'a pas été altéré depuis le scellage.</string>
     <string name="about_time_title">À propos de DeviceTime</string>
     <string name="about_time_body">L\'horodatage du sceau vient de l\'horloge locale de l\'appareil, pas d\'une autorité d\'horodatage (TSA). Si l\'horloge était fausse, l\'heure scellée le sera aussi. Traitez-la comme un indice, pas comme une preuve de quand l\'enregistrement a été fait.</string>
     <string name="about_contact_title">Contact et confidentialité</string>
     <string name="about_privacy">Politique de confidentialité</string>
+    <string name="record_interrupted">Enregistrement en pause : entrée audio ou stockage indisponible. Résolvez le problème, puis reprenez ou enregistrez.</string>
+    <string name="operation_failed">Action impossible. Vérifiez les autorisations, le stockage et le fichier, puis réessayez.</string>
+    <string name="action_play">Lire</string>
+    <string name="action_export">Exporter</string>
+    <string name="action_share">Partager</string>
+    <string name="action_back">Retour</string>
+    <string name="action_trash">Mettre à la corbeille</string>
+    <string name="playback_position">Position de lecture</string>
+    <string name="confirm_purge">Supprimer définitivement ? Cette action est irréversible.</string>
+    <string name="permission_mic_settings">Autorisez le microphone dans les paramètres Android, puis relancez la capture. Aucun enregistrement sans autorisation.</string>
+    <string name="report_embedded_hash">Hash intégré : %1$s</string>
+    <string name="report_computed_hash">Hash calculé : %1$s</string>
+    <string name="report_header">En-tête hexadécimal</string>
 </resources>

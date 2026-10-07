@@ -23,7 +23,7 @@
     <string name="export_ok">已匯出到 Music/SealRec</string>
     <string name="export_fail">匯出失敗</string>
     <string name="offline_badge">完全離線 · 零網路權限</string>
-    <string name="brand_subtitle">硬體金鑰密封 · 本機驗真</string>
+    <string name="brand_subtitle">裝置金鑰密封 · 本機驗證</string>
     <string name="library_title">錄音庫</string>
     <string name="library_subtitle">本地密封檔案 · 可隨時離線鑑定</string>
     <string name="library_empty">暫無錄音</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">清空回收桶</string>
     <string name="about_title">關於 SealRec</string>
     <string name="about_proves_title">SealRec 能證明什麼</string>
-    <string name="about_proves_body">錄音過程中逐樣本計算雜湊，並使用永不離開本裝置的硬體金鑰簽名。鑑定結果為綠標即證明：音訊位元組與麥克風採集時完全一致，且簽名由本裝置金鑰產生。</string>
+    <string name="about_proves_body">PCM 雜湊與嵌入金鑰的簽章一致，但無法識別人或裝置。音訊格式和時間戳記不在簽章範圍內。修復錄音在還原時密封。WAV 檔案未加密。</string>
     <string name="about_not_title">SealRec 不能證明什麼</string>
     <string name="about_not_body">SealRec 無法證明說話人身分、錄音地點，也無法證明聲音本身不是擺拍或經揚聲器重放。它只證明數位檔案自密封以來未被修改。</string>
     <string name="about_time_title">關於裝置時間</string>
     <string name="about_time_body">密封中嵌入的時間戳來自裝置本地時鐘，而非可信時間戳機構（TSA）。若系統時間不準或被修改，密封時間也會隨之偏差。請將其視為參考資訊，而非錄音時間的證明。</string>
     <string name="about_contact_title">聯絡與隱私</string>
     <string name="about_privacy">隱私政策</string>
+    <string name="record_interrupted">錄音已暫停：音訊輸入或儲存空間無法使用。請釋放空間或結束中斷後繼續，或停止並儲存。</string>
+    <string name="operation_failed">操作未完成。請檢查權限、可用儲存空間和檔案後重試。</string>
+    <string name="action_play">播放</string>
+    <string name="action_export">匯出</string>
+    <string name="action_share">分享</string>
+    <string name="action_back">返回</string>
+    <string name="action_trash">移至資源回收筒</string>
+    <string name="playback_position">播放位置</string>
+    <string name="confirm_purge">永久刪除？此操作無法復原。</string>
+    <string name="permission_mic_settings">請在 Android 應用程式設定中允許麥克風權限，再點選錄音。授權前不會開始錄音。</string>
+    <string name="report_embedded_hash">嵌入雜湊：%1$s</string>
+    <string name="report_computed_hash">計算雜湊：%1$s</string>
+    <string name="report_header">檔頭十六進位</string>
 </resources>

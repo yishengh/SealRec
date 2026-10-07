@@ -23,7 +23,7 @@
     <string name="export_ok">Nach Music/SealRec exportiert</string>
     <string name="export_fail">Export fehlgeschlagen</string>
     <string name="offline_badge">Vollständig offline · keine Netzwerkberechtigung</string>
-    <string name="brand_subtitle">Hardware-Schlüssel versiegelt · Prüfung auf dem Gerät</string>
+    <string name="brand_subtitle">Geräteschlüssel · lokale Prüfung</string>
     <string name="library_title">Bibliothek</string>
     <string name="library_subtitle">Lokale versiegelte Dateien · jederzeit offline prüfen</string>
     <string name="library_empty">Noch keine Aufnahmen</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">Papierkorb leeren</string>
     <string name="about_title">Über SealRec</string>
     <string name="about_proves_title">Was SealRec beweist</string>
-    <string name="about_proves_body">Jede Aufnahme wird sampleweise gehasht und mit einem hardwaregestützten Schlüssel signiert, der dieses Gerät nie verlässt. Ein GRÜNES Ergebnis beweist, dass die Audio-Bytes exakt dem Mikrofon entsprechen und die Signatur von diesem Geräteschlüssel stammt.</string>
+    <string name="about_proves_body">Der PCM-Hash stimmt mit der Signatur des eingebetteten Schlüssels überein. Dies identifiziert keine Person oder ein Gerät. Audioformat und Zeitstempel sind nicht signiert. Wiederhergestellte Aufnahmen werden bei der Wiederherstellung signiert. WAV-Dateien sind nicht verschlüsselt.</string>
     <string name="about_not_title">Was es NICHT beweist</string>
     <string name="about_not_body">SealRec kann nicht beweisen, wer sprach, wo aufgenommen wurde, oder dass der Klang nicht gestellt bzw. über Lautsprecher abgespielt wurde. Es beweist nur, dass die digitale Datei seit der Versiegelung unverändert ist.</string>
     <string name="about_time_title">Zu DeviceTime</string>
     <string name="about_time_body">Der eingebettete Zeitstempel kommt von der lokalen Geräteuhr, nicht von einer vertrauenswürdigen Zeitstempel-Stelle (TSA). War die Uhr falsch, ist auch die versiegelte Zeit falsch. Als Hinweis nutzen, nicht als Beweis des Aufnahmezeitpunkts.</string>
     <string name="about_contact_title">Kontakt &amp; Datenschutz</string>
     <string name="about_privacy">Datenschutzerklärung</string>
+    <string name="record_interrupted">Aufnahme pausiert: Audioeingang oder Speicher nicht verfügbar. Problem beheben, dann fortsetzen oder speichern.</string>
+    <string name="operation_failed">Aktion fehlgeschlagen. Berechtigungen, freien Speicher und Datei prüfen und erneut versuchen.</string>
+    <string name="action_play">Wiedergabe</string>
+    <string name="action_export">Exportieren</string>
+    <string name="action_share">Teilen</string>
+    <string name="action_back">Zurück</string>
+    <string name="action_trash">In den Papierkorb</string>
+    <string name="playback_position">Wiedergabeposition</string>
+    <string name="confirm_purge">Endgültig löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="permission_mic_settings">Mikrofon in den Android-App-Einstellungen erlauben und erneut auf Aufnahme tippen. Ohne Erlaubnis startet keine Aufnahme.</string>
+    <string name="report_embedded_hash">Eingebetteter Hash: %1$s</string>
+    <string name="report_computed_hash">Berechneter Hash: %1$s</string>
+    <string name="report_header">Header (Hex)</string>
 </resources>

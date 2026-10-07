@@ -7,6 +7,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,7 +97,7 @@ fun RecordScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(listOf(Foam, Mist, Teal.copy(alpha = 0.12f))),
+                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface)),
             ),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -113,24 +119,25 @@ fun RecordScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .sealContentColumn()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "SealRec",
                 style = MaterialTheme.typography.displayLarge,
-                color = Ink,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
                 text = stringResource(R.string.offline_badge),
                 style = MaterialTheme.typography.labelLarge,
-                color = Teal,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 4.dp),
             )
             Text(
                 text = stringResource(R.string.brand_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp),
             )
 
@@ -149,7 +156,7 @@ fun RecordScreen(
             Text(
                 text = SealRecordService.formatDuration(state.elapsedMs),
                 style = MaterialTheme.typography.headlineMedium,
-                color = Ink,
+                color = MaterialTheme.colorScheme.onBackground,
             )
             Text(
                 text = when (state.engineState) {
@@ -163,15 +170,15 @@ fun RecordScreen(
                 modifier = Modifier.padding(top = 6.dp),
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             state.incompleteRaw?.let { file ->
-                IncompleteBanner(file, onRepair, onDiscard)
+                IncompleteBanner(file, onRepair, onDiscard, enabled = !state.recovering)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
             RecordControls(
-                state = state.engineState,
+                state = if (state.recovering) SealEngineState.Finalizing else state.engineState,
                 pulseScale = if (state.engineState == SealEngineState.Recording) pulseScale else 1f,
                 sweep = sweep,
                 onStart = onStart,
@@ -184,7 +191,7 @@ fun RecordScreen(
             Text(
                 text = stringResource(R.string.device_time_disclaimer),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate.copy(alpha = 0.75f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
@@ -192,18 +199,26 @@ fun RecordScreen(
 }
 
 @Composable
-private fun IncompleteBanner(file: File, onRepair: () -> Unit, onDiscard: () -> Unit) {
+private fun IncompleteBanner(file: File, onRepair: () -> Unit, onDiscard: () -> Unit, enabled: Boolean) {
+    var confirmingDiscard by remember(file) { mutableStateOf(false) }
+    if (confirmingDiscard) {
+        AlertDialog(onDismissRequest = { confirmingDiscard = false },
+            title = { Text(stringResource(R.string.incomplete_discard)) },
+            text = { Text(stringResource(R.string.confirm_purge)) },
+            confirmButton = { TextButton(onClick = { confirmingDiscard = false; onDiscard() }) { Text(stringResource(R.string.incomplete_discard)) } },
+            dismissButton = { TextButton(onClick = { confirmingDiscard = false }) { Text(stringResource(R.string.rename_cancel)) } })
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Mist, MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
             .padding(16.dp),
     ) {
         Text(stringResource(R.string.incomplete_title), style = MaterialTheme.typography.titleLarge)
-        Text(file.name, style = MaterialTheme.typography.labelSmall, color = Slate)
+        Text(file.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onRepair) { Text(stringResource(R.string.incomplete_repair)) }
-            TextButton(onClick = onDiscard) { Text(stringResource(R.string.incomplete_discard)) }
+            Button(onClick = onRepair, enabled = enabled) { Text(stringResource(R.string.incomplete_repair)) }
+            TextButton(onClick = { confirmingDiscard = true }, enabled = enabled) { Text(stringResource(R.string.incomplete_discard)) }
         }
     }
 }
@@ -242,10 +257,10 @@ private fun RecordControls(
                         onClick = onStart,
                         modifier = Modifier.size(80.dp),
                         shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = Teal),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
                         enabled = state == SealEngineState.Idle,
                     ) {
-                        Icon(Icons.Default.Mic, contentDescription = "record", tint = Foam)
+                        Icon(Icons.Default.Mic, contentDescription = stringResource(R.string.tab_record), tint = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -253,34 +268,36 @@ private fun RecordControls(
                 FilledIconButton(
                     onClick = onPause,
                     modifier = Modifier.size(64.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Slate),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
                 ) {
-                    Icon(Icons.Default.Pause, contentDescription = "pause")
+                    Icon(Icons.Default.Pause, contentDescription = stringResource(R.string.action_pause))
                 }
                 FilledIconButton(
                     onClick = onStop,
                     modifier = Modifier.size(80.dp),
                     shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Teal),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = "stop", tint = Foam)
+                    Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.action_stop), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
             SealEngineState.Paused -> {
                 FilledIconButton(
                     onClick = onResume,
                     modifier = Modifier.size(64.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Slate),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
                 ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "resume")
+                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.action_resume))
                 }
                 FilledIconButton(
                     onClick = onStop,
                     modifier = Modifier.size(80.dp),
                     shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Teal),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary),
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = "stop", tint = Foam)
+                    Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.action_stop), tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

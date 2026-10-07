@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -37,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.core.audio.PlaybackState
 import com.yishenghuang.sealrec.data.RecordingEntity
@@ -60,6 +64,7 @@ fun LibraryScreen(
     onRename: (Long, String) -> Unit,
     onVerify: (Long) -> Unit,
     onExport: (Long) -> Unit,
+    onShare: (Long) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
     var renameTarget by remember { mutableStateOf<RecordingEntity?>(null) }
@@ -67,7 +72,7 @@ fun LibraryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Foam, Mist)))
+            .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface)))
             .sealContentColumn(),
     ) {
         Text(
@@ -78,7 +83,7 @@ fun LibraryScreen(
         Text(
             text = stringResource(R.string.library_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = Slate,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
 
@@ -86,7 +91,7 @@ fun LibraryScreen(
             Text(
                 text = stringResource(R.string.library_empty),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Slate,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(24.dp),
             )
         } else {
@@ -112,6 +117,7 @@ fun LibraryScreen(
                         onRename = { renameTarget = item },
                         onVerify = onVerify,
                         onExport = onExport,
+                        onShare = onShare,
                         onDelete = onDelete,
                     )
                 }
@@ -144,9 +150,10 @@ private fun RecordingRow(
     onRename: () -> Unit,
     onVerify: (Long) -> Unit,
     onExport: (Long) -> Unit,
+    onShare: (Long) -> Unit,
     onDelete: (Long) -> Unit,
 ) {
-    val date = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    val date = SimpleDateFormat("yyyy-MM-dd HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
         .format(Date(item.createdAtMs))
     var scrubbing by remember(item.id) { mutableStateOf(false) }
     var scrubValue by remember(item.id) { mutableFloatStateOf(0f) }
@@ -156,30 +163,37 @@ private fun RecordingRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Mist, MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.medium)
             .padding(16.dp),
     ) {
         Text(item.fileName, style = MaterialTheme.typography.titleLarge)
         Text(
             "$date · ${SealRecordService.formatDuration(item.durationMs)} · ${item.fileSizeBytes / 1024} KB",
             style = MaterialTheme.typography.labelSmall,
-            color = Slate,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         item.keyFingerprintHex?.let {
             Text(
                 stringResource(R.string.key_fingerprint, it),
                 style = MaterialTheme.typography.labelLarge,
-                color = Teal,
+                color = MaterialTheme.colorScheme.primary,
             )
         }
         item.lastVerifyStatus?.let {
+            val status = stringResource(when (it) {
+                "Intact" -> R.string.status_intact
+                "Tampered" -> R.string.status_tampered
+                "BadSignature" -> R.string.status_bad_sig
+                else -> R.string.status_not_seal
+            })
             Text(
-                stringResource(R.string.last_verify, it),
+                stringResource(R.string.last_verify, status),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
 
         if (active) {
+            val seekLabel = stringResource(R.string.playback_position)
             Slider(
                 value = sliderValue,
                 onValueChange = {
@@ -191,7 +205,7 @@ private fun RecordingRow(
                     scrubbing = false
                 },
                 valueRange = 0f..sliderMax,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = seekLabel },
                 colors = SliderDefaults.colors(
                     thumbColor = Teal,
                     activeTrackColor = Teal,
@@ -204,18 +218,17 @@ private fun RecordingRow(
                 Text(
                     SealRecordService.formatDuration(sliderValue.toLong()),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     SealRecordService.formatDuration(durationMs.toLong()),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             IconButton(
@@ -224,8 +237,8 @@ private fun RecordingRow(
             ) {
                 Icon(
                     imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (playing) "pause" else "play",
-                    tint = if (playbackEnabled || playing) Teal else Slate.copy(alpha = 0.4f),
+                    contentDescription = stringResource(if (playing) R.string.action_pause else R.string.action_play),
+                    tint = if (playbackEnabled || playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )
             }
             TextButton(onClick = { onVerify(item.id) }) {
@@ -233,13 +246,16 @@ private fun RecordingRow(
                 Text(stringResource(R.string.action_verify), modifier = Modifier.padding(start = 4.dp))
             }
             IconButton(onClick = onRename) {
-                Icon(Icons.Default.DriveFileRenameOutline, contentDescription = "rename", tint = Slate)
+                Icon(Icons.Default.DriveFileRenameOutline, contentDescription = stringResource(R.string.rename_title), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = { onShare(item.id) }) {
+                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.action_share))
             }
             IconButton(onClick = { onExport(item.id) }) {
-                Icon(Icons.Default.Share, contentDescription = "export")
+                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.action_export))
             }
             IconButton(onClick = { onDelete(item.id) }) {
-                Icon(Icons.Default.Delete, contentDescription = "delete")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_trash))
             }
         }
     }

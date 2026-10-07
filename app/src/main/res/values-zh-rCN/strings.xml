@@ -23,7 +23,7 @@
     <string name="export_ok">已导出到 Music/SealRec</string>
     <string name="export_fail">导出失败</string>
     <string name="offline_badge">完全离线 · 零网络权限</string>
-    <string name="brand_subtitle">硬件密钥密封 · 本机验真</string>
+    <string name="brand_subtitle">设备密钥密封 · 本地鉴定</string>
     <string name="library_title">录音库</string>
     <string name="library_subtitle">本地密封文件 · 可随时离线鉴定</string>
     <string name="library_empty">暂无录音</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">清空回收站</string>
     <string name="about_title">关于 SealRec</string>
     <string name="about_proves_title">SealRec 能证明什么</string>
-    <string name="about_proves_body">录音过程中逐样本计算哈希，并使用永不离开本设备的硬件密钥签名。鉴定结果为绿标即证明：音频字节与麦克风采集时完全一致，且签名由本设备密钥生成。</string>
+    <string name="about_proves_body">PCM 哈希与嵌入密钥的签名一致，但不能据此识别人或设备。音频格式和时间戳不在签名范围内。修复录音在恢复时密封。WAV 文件未加密。</string>
     <string name="about_not_title">SealRec 不能证明什么</string>
     <string name="about_not_body">SealRec 无法证明说话人身份、录音地点，也无法证明声音本身不是摆拍或经扬声器重放。它只证明数字文件自密封以来未被修改。</string>
     <string name="about_time_title">关于设备时间</string>
     <string name="about_time_body">密封中嵌入的时间戳来自设备本地时钟，而非可信时间戳机构（TSA）。若系统时间不准或被修改，密封时间也会随之偏差。请将其视为参考信息，而非录音时间的证明。</string>
     <string name="about_contact_title">联系与隐私</string>
     <string name="about_privacy">隐私政策</string>
+    <string name="record_interrupted">录音已暂停：音频输入或存储不可用。请释放空间或结束中断后继续，或停止并保存。</string>
+    <string name="operation_failed">操作未完成。请检查权限、可用存储空间和文件后重试。</string>
+    <string name="action_play">播放</string>
+    <string name="action_export">导出</string>
+    <string name="action_share">分享</string>
+    <string name="action_back">返回</string>
+    <string name="action_trash">移至回收站</string>
+    <string name="playback_position">播放位置</string>
+    <string name="confirm_purge">永久删除？此操作无法撤销。</string>
+    <string name="permission_mic_settings">请在 Android 应用设置中允许麦克风权限，再点击录音。授权前不会开始录音。</string>
+    <string name="report_embedded_hash">嵌入哈希：%1$s</string>
+    <string name="report_computed_hash">计算哈希：%1$s</string>
+    <string name="report_header">文件头十六进制</string>
 </resources>

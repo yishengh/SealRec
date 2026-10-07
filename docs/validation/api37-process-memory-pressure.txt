@@ -1,0 +1,2 @@
+10-07 20:58:20.763   288   288 I lowmemorykiller: Kill 'com.yishenghuang.sealrec.debug' (2726), uid 10231, oom_score_adj 700 to free 168160kB rss, 103336kB anon rss, 0kB swap, 0kB dmabuf_pss, 0kB dmabuf_rss; reason: min watermark is breached even after kill
+10-07 20:58:21.073   650   962 W ActivityManager: Crash of app com.yishenghuang.sealrec.debug running instrumentation ComponentInfo{com.yishenghuang.sealrec.debug.test/androidx.test.runner.AndroidJUnitRunner}

@@ -9,20 +9,24 @@ import android.os.Build
 /**
  * Optional exclusive audio focus while recording to suppress notification sounds.
  */
-class RecordingAudioFocus(context: Context) {
+class RecordingAudioFocus(context: Context, private val onLoss: () -> Unit) {
     private val audioManager =
         context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var focusRequest: AudioFocusRequest? = null
 
-    fun requestExclusive(): Boolean {
+    fun request(exclusive: Boolean): Boolean {
+        abandon()
         val attrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
         val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+            val req = AudioFocusRequest.Builder(if (exclusive) AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE else AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(attrs)
-                .setOnAudioFocusChangeListener { }
+                .setOnAudioFocusChangeListener { change ->
+                    if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                        (exclusive && change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK)) onLoss()
+                }
                 .build()
             focusRequest = req
             audioManager.requestAudioFocus(req)

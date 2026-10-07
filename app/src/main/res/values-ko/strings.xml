@@ -23,7 +23,7 @@
     <string name="export_ok">Music/SealRec으로 내보냄</string>
     <string name="export_fail">내보내기 실패</string>
     <string name="offline_badge">완전 오프라인 · 네트워크 권한 없음</string>
-    <string name="brand_subtitle">하드웨어 키 봉인 · 기기 내 검증</string>
+    <string name="brand_subtitle">기기 키로 서명 · 기기에서 검증</string>
     <string name="library_title">보관함</string>
     <string name="library_subtitle">로컬 봉인 파일 · 언제든 오프라인 검증</string>
     <string name="library_empty">녹음 없음</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">휴지통 비우기</string>
     <string name="about_title">SealRec 정보</string>
     <string name="about_proves_title">SealRec이 증명하는 것</string>
-    <string name="about_proves_body">녹음 중 샘플 단위로 해시하고, 이 기기를 떠나지 않는 하드웨어 키로 서명합니다. 녹색 검증 결과는 오디오 바이트가 마이크 캡처와 동일하며 서명이 이 기기 키로 만들어졌음을 증명합니다.</string>
+    <string name="about_proves_body">PCM 해시가 내장된 키의 서명과 일치합니다. 사람이나 기기의 신원은 증명하지 않습니다. 오디오 형식과 시간은 서명되지 않습니다. 복구된 녹음은 복구 시 서명됩니다. WAV는 암호화되지 않습니다.</string>
     <string name="about_not_title">증명하지 못하는 것</string>
     <string name="about_not_body">화자 신원, 녹음 장소, 소리가 연출이나 스피커 재생이 아님은 증명할 수 없습니다. 봉인 이후 디지털 파일이 변조되지 않았음만 증명합니다.</string>
     <string name="about_time_title">DeviceTime 안내</string>
     <string name="about_time_body">봉인에 들어간 시각은 기기 로컬 시계이며 신뢰 시점 기관(TSA)이 아닙니다. 시계가 틀리면 봉인 시각도 틀립니다. 녹음 시각의 증명이 아니라 참고로만 보세요.</string>
     <string name="about_contact_title">문의 및 개인정보</string>
     <string name="about_privacy">개인정보 처리방침</string>
+    <string name="record_interrupted">녹음이 일시 중지되었습니다. 오디오 입력과 저장 공간을 확인한 후 재개하거나 저장하세요.</string>
+    <string name="operation_failed">작업을 완료할 수 없습니다. 권한, 저장 공간 및 파일을 확인한 후 다시 시도하세요.</string>
+    <string name="action_play">재생</string>
+    <string name="action_export">내보내기</string>
+    <string name="action_share">공유</string>
+    <string name="action_back">뒤로</string>
+    <string name="action_trash">휴지통으로 이동</string>
+    <string name="playback_position">재생 위치</string>
+    <string name="confirm_purge">영구 삭제하시겠습니까? 되돌릴 수 없습니다.</string>
+    <string name="permission_mic_settings">Android 앱 설정에서 마이크를 허용한 후 녹음을 누르세요. 허용 전에는 녹음하지 않습니다.</string>
+    <string name="report_embedded_hash">내장 해시: %1$s</string>
+    <string name="report_computed_hash">계산된 해시: %1$s</string>
+    <string name="report_header">헤더 16진수</string>
 </resources>

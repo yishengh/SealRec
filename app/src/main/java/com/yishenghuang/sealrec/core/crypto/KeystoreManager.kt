@@ -25,9 +25,9 @@ object Sha256Hasher {
 class KeystoreManager(
     private val alias: String = DEFAULT_ALIAS,
 ) {
-    private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+    private val keyStore: KeyStore by lazy { KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) } }
 
-    fun ensureKey(): PublicKey {
+    @Synchronized fun ensureKey(): PublicKey {
         if (!keyStore.containsAlias(alias)) {
             generateKey(preferStrongBox = true)
         }

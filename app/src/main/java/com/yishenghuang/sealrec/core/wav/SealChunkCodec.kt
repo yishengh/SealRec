@@ -45,6 +45,9 @@ object SealChunkCodec {
             val hash = readLenPrefixed(input)
             val pub = readLenPrefixed(input)
             val sig = readLenPrefixed(input)
+            require(hash.size == 32 && pub.isNotEmpty() && sig.isNotEmpty() && input.available() == 0) {
+                "Invalid seal payload"
+            }
             return SealPayload(
                 version = version,
                 deviceTimeUtcMs = deviceTime,

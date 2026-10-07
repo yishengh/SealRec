@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -107,16 +108,39 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
         overlayName = value.name
     }
     val useRail = isExpandedWidth()
+    BackHandler(enabled = overlay != Overlay.None) { setOverlay(Overlay.None) }
+    var micDenied by rememberSaveable { mutableStateOf(false) }
+    if (micDenied) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { micDenied = false },
+            title = { Text(stringResource(R.string.permission_mic)) },
+            text = { Text(stringResource(R.string.permission_mic_settings)) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = {
+                micDenied = false
+                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    android.net.Uri.parse("package:" + context.packageName)))
+            }) { Text(stringResource(R.string.tab_settings)) } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { micDenied = false }) { Text(stringResource(R.string.rename_cancel)) } },
+        )
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        val mic = result[Manifest.permission.RECORD_AUDIO] == true
+        val mic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (mic) {
             viewModel.startRecording(context)
         } else {
-            Toast.makeText(context, R.string.permission_mic, Toast.LENGTH_LONG).show()
+            micDenied = true
         }
+    }
+
+    var pendingExport by rememberSaveable { mutableStateOf<Long?>(null) }
+    val exportPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        val id = pendingExport
+        pendingExport = null
+        if (granted.values.all { it } && id != null) viewModel.exportRecording(id)
+        else Toast.makeText(context, R.string.operation_failed, Toast.LENGTH_LONG).show()
     }
 
     fun ensurePermsAndStart() {
@@ -204,7 +228,16 @@ private fun SealRecAppScaffold(viewModel: SealRecViewModel) {
                     viewModel.verifyRecording(it)
                     tab = TAB_VERIFY
                 },
-                onExport = { viewModel.exportRecording(it) },
+                onShare = { viewModel.shareRecording(it, context) },
+                onExport = {
+                    val storagePermissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    if (Build.VERSION.SDK_INT <= 28 && storagePermissions.any {
+                        ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+                    }) {
+                        pendingExport = it
+                        exportPermission.launch(storagePermissions)
+                    } else viewModel.exportRecording(it)
+                },
                 onDelete = { viewModel.deleteRecording(it) },
             )
             TAB_VERIFY -> VerifyScreen(

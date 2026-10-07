@@ -2,284 +2,246 @@ package com.yishenghuang.sealrec.core.pipeline
 
 import com.yishenghuang.sealrec.core.audio.AudioConfig
 import com.yishenghuang.sealrec.core.audio.AudioRecordCapture
+import com.yishenghuang.sealrec.core.audio.PcmCapture
 import com.yishenghuang.sealrec.core.crypto.KeystoreManager
 import com.yishenghuang.sealrec.core.crypto.Sha256Hasher
 import com.yishenghuang.sealrec.core.wav.SealPayload
+import com.yishenghuang.sealrec.core.wav.WavFormat
 import com.yishenghuang.sealrec.core.wav.WavIO
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
 import kotlin.math.sqrt
 
-enum class SealEngineState {
-    Idle,
-    Recording,
-    Paused,
-    Finalizing,
-}
-
+enum class SealEngineState { Idle, Recording, Paused, Finalizing }
 class EmptyRecordingException : IllegalStateException("Recording too short or empty")
 
-/**
- * Bounded single-consumer PCM pipeline:
- * AudioRecord -> Channel(32) -> digest + raw write + RMS.
- */
+/** One bounded worker owns PCM writes. Commands join it before closing or sealing files. */
 class SealEngine(
     private val scope: CoroutineScope,
     private val keystore: KeystoreManager = KeystoreManager(),
-    private var audioConfig: AudioConfig = AudioConfig(),
-    private val channelCapacity: Int = 32,
+    private val audioConfig: AudioConfig = AudioConfig(),
+    private val captureFactory: () -> PcmCapture = { AudioRecordCapture(audioConfig) },
+    private val availableBytes: (File) -> Long = { it.usableSpace },
+    private val maxPcmBytes: Long = WavIO.MAX_PCM_BYTES,
 ) {
     private val _state = MutableStateFlow(SealEngineState.Idle)
-    val state: StateFlow<SealEngineState> = _state.asStateFlow()
-
+    val state = _state.asStateFlow()
     private val _rms = MutableSharedFlow<Float>(extraBufferCapacity = 64)
-    val rms: SharedFlow<Float> = _rms.asSharedFlow()
-
+    val rms = _rms.asSharedFlow()
     private val _elapsedMs = MutableStateFlow(0L)
-    val elapsedMs: StateFlow<Long> = _elapsedMs.asStateFlow()
-
-    private var producerJob: Job? = null
-    private var consumerJob: Job? = null
-    private var channel: Channel<ByteArray>? = null
-    private var capture: AudioRecordCapture? = null
-    private var rawOut: BufferedOutputStream? = null
-    private var digest: MessageDigest? = null
+    val elapsedMs = _elapsedMs.asStateFlow()
+    private val _error = MutableStateFlow(false)
+    val error = _error.asStateFlow()
+    private var worker: Job? = null
+    private var capture: PcmCapture? = null
+    private var rawOut: FileOutputStream? = null
     private var rawFile: File? = null
-    private var startWallMs: Long = 0L
-    private var accumulatedMs: Long = 0L
+    private var written = 0L
+    private var digest = Sha256Hasher.newStreaming()
     private val gate = Mutex()
-
     val currentRawFile: File? get() = rawFile
 
-    fun start(rawFile: File) {
-        scope.launch(Dispatchers.IO) {
-            gate.withLock {
-                when (_state.value) {
-                    SealEngineState.Paused -> {
-                        resumeInternal()
-                        return@withLock
-                    }
-                    SealEngineState.Idle -> Unit
-                    else -> error("Cannot start from ${_state.value}")
-                }
-
-                rawFile.parentFile?.mkdirs()
-                if (rawFile.exists()) rawFile.delete()
-                this@SealEngine.rawFile = rawFile
-                accumulatedMs = 0L
-                _elapsedMs.value = 0L
+    suspend fun start(raw: File) = withContext(Dispatchers.IO) {
+        gate.withLock {
+            if (_state.value == SealEngineState.Recording || _state.value == SealEngineState.Finalizing) return@withLock
+            _error.value = false
+            if (_state.value == SealEngineState.Idle) {
+                require(!raw.exists()) { "Recording already exists" }
+                raw.parentFile?.mkdirs()
+                check(availableBytes(raw.parentFile!!) > STORAGE_RESERVE) { "Insufficient storage" }
+                CrashRecovery.saveFormat(raw, audioConfig.toWavFormat())
+                rawFile = raw
+                written = 0
                 digest = Sha256Hasher.newStreaming()
-                rawOut = BufferedOutputStream(FileOutputStream(rawFile, false), 64 * 1024)
-                channel = Channel(capacity = channelCapacity)
-                capture = AudioRecordCapture(audioConfig).also { it.start() }
-                startWallMs = System.currentTimeMillis()
-                _state.value = SealEngineState.Recording
-                startJobs()
+                _elapsedMs.value = 0
+                rawOut = FileOutputStream(raw)
             }
-        }
-    }
-
-    fun pause() {
-        scope.launch(Dispatchers.IO) {
-            gate.withLock {
-                if (_state.value != SealEngineState.Recording) return@withLock
-                accumulatedMs += System.currentTimeMillis() - startWallMs
-                _elapsedMs.value = accumulatedMs
+            val cap = captureFactory()
+            try {
+                cap.start()
+            } catch (e: Exception) {
+                cap.stop()
                 _state.value = SealEngineState.Paused
-                stopCaptureAndDrain()
+                throw e
+            }
+            capture = cap
+            _state.value = SealEngineState.Recording
+            worker = scope.launch(Dispatchers.IO) {
+                try {
+                    val buffer = ByteArray(cap.bufferSizeBytes)
+                    var nextStorageCheck = 0L
+                    while (isActive) {
+                        val n = cap.read(buffer)
+                        if (!isActive) break
+                        check(n >= 0) { "Audio input interrupted" }
+                        if (n == 0) { delay(10); continue }
+                        check(written + n <= maxPcmBytes) { "Recording length limit reached" }
+                        if (written >= nextStorageCheck) {
+                            // Final WAV temporarily coexists with raw; reserve space for both.
+                            check(availableBytes(rawFile!!.parentFile!!) > written + STORAGE_RESERVE) { "Insufficient storage" }
+                            nextStorageCheck = written + 1024 * 1024
+                        }
+                        rawOut!!.write(buffer, 0, n)
+                        digest.update(buffer, 0, n)
+                        written += n
+                        _elapsedMs.value = written * 1000 / audioConfig.toWavFormat().byteRate
+                        _rms.tryEmit(computeRms(if (n == buffer.size) buffer else buffer.copyOf(n)))
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Do not join this worker from itself.
+                    scope.launch { runCatching { pause() }; _error.value = true }
+                }
             }
         }
     }
 
-    private fun resumeInternal() {
-        channel = Channel(capacity = channelCapacity)
-        capture = AudioRecordCapture(audioConfig).also { it.start() }
-        startWallMs = System.currentTimeMillis()
-        _state.value = SealEngineState.Recording
-        startJobs()
+    suspend fun pause() = withContext(Dispatchers.IO) {
+        gate.withLock {
+            if (_state.value != SealEngineState.Recording) return@withLock
+            _state.value = SealEngineState.Paused
+            stopCapture()
+        }
+    }
+
+    private suspend fun stopCapture() {
+        worker?.cancel()
+        capture?.stop()
+        capture = null
+        worker?.join()
+        worker = null
+        rawOut?.fd?.sync()
     }
 
     suspend fun stopAndSeal(outputWav: File): SealPayload = withContext(Dispatchers.IO) {
         gate.withLock {
-            val wasPaused = _state.value == SealEngineState.Paused
+            check(_state.value == SealEngineState.Recording || _state.value == SealEngineState.Paused)
             _state.value = SealEngineState.Finalizing
-            if (!wasPaused) {
-                stopCaptureAndDrain()
-            } else {
-                rawOut?.flush()
-            }
-
-            rawOut?.close()
-            rawOut = null
-
-            val dig = digest ?: error("No digest")
-            val hash = dig.digest()
-            digest = null
-
-            val pub = keystore.publicKeyX509Bytes()
-            val signature = keystore.signSha256Digest(hash)
-            val payload = SealPayload(
-                deviceTimeUtcMs = System.currentTimeMillis(),
-                pcmSha256 = hash,
-                publicKeyX509 = pub,
-                signature = signature,
-            )
-
-            val raw = rawFile ?: error("No raw file")
-            val bytesPerSec =
-                audioConfig.sampleRate * audioConfig.channels * (audioConfig.bitsPerSample / 8)
-            val minBytes = (bytesPerSec / 10).coerceAtLeast(1) // ~100ms
-            if (raw.length() < minBytes) {
-                raw.delete()
-                rawFile = null
-                _state.value = SealEngineState.Idle
-                _elapsedMs.value = 0L
-                accumulatedMs = 0L
-                throw EmptyRecordingException()
-            }
-            WavIO.writeFromRawFile(raw, outputWav, audioConfig.toWavFormat(), payload)
-            raw.delete()
-            rawFile = null
-            _state.value = SealEngineState.Idle
-            _elapsedMs.value = 0L
-            accumulatedMs = 0L
-            payload
-        }
-    }
-
-    fun cancel() {
-        scope.launch(Dispatchers.IO) {
-            gate.withLock {
-                _state.value = SealEngineState.Idle
-                stopCaptureAndDrain()
-                try {
-                    rawOut?.close()
-                } catch (_: Exception) {
-                }
+            try {
+                stopCapture()
+                rawOut?.close()
                 rawOut = null
-                digest = null
-                rawFile?.delete()
-                rawFile = null
-                _elapsedMs.value = 0L
-                accumulatedMs = 0L
-            }
-        }
-    }
-
-    private fun startJobs() {
-        val ch = channel ?: return
-        val cap = capture ?: return
-
-        producerJob = scope.launch(Dispatchers.IO) {
-            val bufSize = cap.bufferSizeBytes
-            while (isActive && _state.value == SealEngineState.Recording) {
-                val buffer = ByteArray(bufSize)
-                val read = cap.read(buffer)
-                if (read > 0) {
-                    val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
-                    ch.send(chunk)
-                    _elapsedMs.value = accumulatedMs + (System.currentTimeMillis() - startWallMs)
-                } else if (read < 0) {
-                    break
+                val raw = checkNotNull(rawFile)
+                if (raw.length() < audioConfig.toWavFormat().byteRate / 10) {
+                    CrashRecovery.discard(raw)
+                    rawFile = null
+                    throw EmptyRecordingException()
                 }
-            }
-        }
-
-        consumerJob = scope.launch(Dispatchers.IO) {
-            val dig = digest ?: return@launch
-            val out = rawOut ?: return@launch
-            for (chunk in ch) {
-                dig.update(chunk)
-                out.write(chunk)
-                _rms.tryEmit(computeRms(chunk))
+                // Keep raw until database registration succeeds, so save failures remain recoverable.
+                CrashRecovery.repairAndSeal(raw, outputWav, keystore, audioConfig,
+                    deleteSource = false, expectedHash = digest.digest())
+            } finally {
+                _state.value = SealEngineState.Idle
             }
         }
     }
 
-    private suspend fun stopCaptureAndDrain() {
-        producerJob?.cancel()
-        producerJob = null
-        capture?.stop()
-        capture = null
-        channel?.close()
-        consumerJob?.join()
-        consumerJob = null
-        channel = null
-        rawOut?.flush()
+    suspend fun acknowledgeSaved() = withContext(Dispatchers.IO) {
+        gate.withLock { rawFile?.let(CrashRecovery::discard); rawFile = null }
+    }
+
+    /** Service destruction preserves incomplete audio; explicit cancel alone discards it. */
+    suspend fun close(discard: Boolean = false) = withContext(Dispatchers.IO + NonCancellable) {
+        gate.withLock {
+            try { stopCapture() } finally {
+                rawOut?.close()
+                rawOut = null
+                if (discard || rawFile?.length() == 0L) rawFile?.let(CrashRecovery::discard)
+                rawFile = null
+                _state.value = SealEngineState.Idle
+            }
+        }
     }
 
     companion object {
+        const val STORAGE_RESERVE = 8L * 1024 * 1024
         fun computeRms(pcm: ByteArray): Float {
             if (pcm.size < 2) return 0f
             var sum = 0.0
             var samples = 0
             var i = 0
             while (i + 1 < pcm.size) {
-                val sample = (pcm[i].toInt() and 0xFF) or (pcm[i + 1].toInt() shl 8)
-                val signed = sample.toShort().toInt()
-                sum += (signed * signed).toDouble()
+                val sample = ((pcm[i].toInt() and 0xff) or (pcm[i + 1].toInt() shl 8)).toShort().toInt()
+                sum += sample.toDouble() * sample
                 samples++
                 i += 2
             }
-            if (samples == 0) return 0f
             return (sqrt(sum / samples) / 32768.0).toFloat().coerceIn(0f, 1f)
         }
     }
 }
 
-/**
- * Recover incomplete .raw recordings after process death.
- */
 object CrashRecovery {
     const val IN_PROGRESS_DIR = "in_progress"
     const val RAW_SUFFIX = ".raw"
-
-    fun inProgressDir(filesDir: File): File = File(filesDir, IN_PROGRESS_DIR)
-
-    fun listIncomplete(filesDir: File): List<File> {
-        val dir = inProgressDir(filesDir)
-        if (!dir.isDirectory) return emptyList()
-        return dir.listFiles { f -> f.isFile && f.name.endsWith(RAW_SUFFIX) && f.length() > 0 }
-            ?.sortedByDescending { it.lastModified() }
-            .orEmpty()
+    fun inProgressDir(filesDir: File) = File(filesDir, IN_PROGRESS_DIR)
+    fun listIncomplete(filesDir: File): List<File> = inProgressDir(filesDir)
+        .listFiles { f -> f.isFile && f.name.endsWith(RAW_SUFFIX) && f.length() > 0 }
+        ?.sortedByDescending { it.lastModified() }.orEmpty()
+    private fun metadata(raw: File) = File(raw.parentFile, raw.name + ".format")
+    private fun destination(raw: File) = File(raw.parentFile, raw.name + ".destination")
+    fun markDestination(raw: File, wav: File) {
+        FileOutputStream(destination(raw)).use { it.write(wav.name.toByteArray()); it.fd.sync() }
     }
-
+    fun savedFileName(raw: File): String? {
+        val journal = destination(raw)
+        if (!journal.isFile || journal.length() > 240) return null
+        val name = journal.readText()
+        return name.takeIf { it.matches(Regex("SealRec_[0-9]{8}_[0-9]{6}_[0-9a-f]{8}\\.wav")) }
+    }
+    fun saveFormat(raw: File, format: WavFormat) {
+        FileOutputStream(metadata(raw)).use {
+            it.write("${format.sampleRate},${format.channels},${format.bitsPerSample}".toByteArray())
+            it.fd.sync()
+        }
+    }
+    fun readFormat(raw: File): WavFormat {
+        val meta = metadata(raw)
+        if (!meta.exists()) return WavFormat() // Legacy recordings used the default; cannot infer old quality.
+        val values = meta.readText().split(',').map { it.toInt() }
+        require(values.size == 3 && values[0] in listOf(16000, 44100, 48000) && values[1] == 1 && values[2] == 16)
+        return WavFormat(values[0], values[1], values[2])
+    }
+    fun discard(raw: File) {
+        check(!raw.exists() || raw.delete()) { "Unable to remove raw recording" }
+        metadata(raw).delete()
+        destination(raw).delete()
+    }
     fun repairAndSeal(
         rawFile: File,
         outputWav: File,
         keystore: KeystoreManager = KeystoreManager(),
-        audioConfig: AudioConfig = AudioConfig(),
+        audioConfig: AudioConfig? = null,
+        deleteSource: Boolean = true,
+        expectedHash: ByteArray? = null,
     ): SealPayload {
-        val pcm = rawFile.readBytes()
-        require(pcm.isNotEmpty()) { "Empty raw file" }
-        val hash = Sha256Hasher.digest(pcm)
-        val pub = keystore.publicKeyX509Bytes()
-        val signature = keystore.signSha256Digest(hash)
-        val payload = SealPayload(
-            deviceTimeUtcMs = System.currentTimeMillis(),
-            pcmSha256 = hash,
-            publicKeyX509 = pub,
-            signature = signature,
-        )
-        WavIO.write(outputWav, pcm, audioConfig.toWavFormat(), payload)
-        rawFile.delete()
+        val format = audioConfig?.toWavFormat() ?: readFormat(rawFile)
+        require(rawFile.length() in 1..WavIO.MAX_PCM_BYTES) { "Invalid raw recording" }
+        val alignedBytes = rawFile.length() - rawFile.length() % format.blockAlign
+        require(alignedBytes > 0) { "No complete PCM frames" }
+        val digest = Sha256Hasher.newStreaming()
+        rawFile.inputStream().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            var remaining = alignedBytes
+            while (remaining > 0) {
+                val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                check(count > 0) { "Raw recording truncated" }
+                digest.update(buffer, 0, count)
+                remaining -= count
+            }
+        }
+        val hash = digest.digest()
+        require(expectedHash == null || hash.contentEquals(expectedHash)) { "Captured PCM changed before sealing" }
+        val payload = SealPayload(deviceTimeUtcMs = System.currentTimeMillis(), pcmSha256 = hash,
+            publicKeyX509 = keystore.publicKeyX509Bytes(), signature = keystore.signSha256Digest(hash))
+        markDestination(rawFile, outputWav)
+        WavIO.writeFromRawFile(rawFile, outputWav, format, payload, alignedBytes)
+        if (deleteSource) discard(rawFile)
         return payload
     }
 }

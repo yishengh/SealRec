@@ -1,0 +1,16 @@
+
+com.yishenghuang.sealrec.CoreFlowInstrumentedTest:.
+com.yishenghuang.sealrec.EmptyStatesInstrumentedTest:..
+com.yishenghuang.sealrec.ExampleInstrumentedTest:.
+com.yishenghuang.sealrec.InterfaceInstrumentedTest:.
+com.yishenghuang.sealrec.OfflinePermissionInstrumentedTest:.
+com.yishenghuang.sealrec.ProcessRecoveryInstrumentedTest:
+com.yishenghuang.sealrec.ProcessRecoveryInstrumentedTest:
+com.yishenghuang.sealrec.RecordingLifecycleTest:.......
+com.yishenghuang.sealrec.SaveRecoveryInstrumentedTest:....
+com.yishenghuang.sealrec.core.crypto.KeystoreManagerInstrumentedTest:..
+com.yishenghuang.sealrec.core.verify.SealVerifyInstrumentedTest:.
+
+Time: 63.575
+
+OK (22 tests)

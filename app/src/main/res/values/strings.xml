@@ -22,7 +22,7 @@
     <string name="export_ok">Exported to Music/SealRec</string>
     <string name="export_fail">Export failed</string>
     <string name="offline_badge">Fully offline · zero network permission</string>
-    <string name="brand_subtitle">Hardware-key sealed · on-device verify</string>
+    <string name="brand_subtitle">Device-key sealed · on-device verify</string>
     <string name="library_title">Library</string>
     <string name="library_subtitle">Local sealed files · offline verify anytime</string>
     <string name="library_empty">No recordings yet</string>
@@ -73,11 +73,24 @@
     <string name="trash_empty_all">Empty recycle bin</string>
     <string name="about_title">About SealRec</string>
     <string name="about_proves_title">What SealRec proves</string>
-    <string name="about_proves_body">Each recording is hashed sample-by-sample while it is captured and signed with a hardware-backed key that never leaves this device. A GREEN verify result proves the audio bytes are exactly what the microphone produced and that the signature was made by this device\'s key.</string>
+    <string name="about_proves_body">The PCM hash matches a signature verified with the embedded key. This does not identify a person or device. Audio format and timestamps are not signed. Repaired recordings are sealed at recovery time. WAV files are not encrypted.</string>
     <string name="about_not_title">What it does NOT prove</string>
     <string name="about_not_body">SealRec cannot prove who was speaking, where the recording happened, or that the sounds themselves were not staged or replayed from a speaker. It only proves the digital file has not been altered since it was sealed.</string>
     <string name="about_time_title">About DeviceTime</string>
     <string name="about_time_body">The timestamp embedded in each seal comes from the device\'s local clock, not a trusted timestamping authority (TSA). If the system clock was wrong or changed, the sealed time will reflect that. Treat it as a hint, not as proof of when the recording was made.</string>
     <string name="about_contact_title">Contact &amp; privacy</string>
     <string name="about_privacy">Privacy policy</string>
+    <string name="record_interrupted">Recording paused: audio input or storage is unavailable. Free space or end the interruption, then resume or save.</string>
+    <string name="operation_failed">Unable to complete this action. Check permissions, available storage and the file, then try again.</string>
+    <string name="action_play">Play</string>
+    <string name="action_export">Export</string>
+    <string name="action_share">Share</string>
+    <string name="action_back">Back</string>
+    <string name="action_trash">Move to recycle bin</string>
+    <string name="playback_position">Playback position</string>
+    <string name="confirm_purge">Delete permanently? This cannot be undone.</string>
+    <string name="permission_mic_settings">Allow microphone access in Android app settings, then tap Record again. No recording starts until access is granted.</string>
+    <string name="report_embedded_hash">Embedded hash: %1$s</string>
+    <string name="report_computed_hash">Computed hash: %1$s</string>
+    <string name="report_header">Header hex</string>
 </resources>

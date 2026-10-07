@@ -23,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -45,6 +47,17 @@ fun TrashScreen(
     onBack: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    var pendingDelete by remember { mutableStateOf<Long?>(null) }
+    pendingDelete?.let { id ->
+        AlertDialog(onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.trash_purge)) },
+            text = { Text(stringResource(R.string.confirm_purge)) },
+            confirmButton = { TextButton(onClick = {
+                pendingDelete = null
+                if (id == -1L) onEmptyTrash() else onPurge(id)
+            }) { Text(stringResource(R.string.trash_purge)) } },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text(stringResource(R.string.rename_cancel)) } })
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -61,7 +74,7 @@ fun TrashScreen(
             IconButton(onClick = onBack) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "back",
+                    contentDescription = stringResource(R.string.action_back),
                     tint = scheme.onBackground,
                 )
             }
@@ -71,7 +84,7 @@ fun TrashScreen(
                 modifier = Modifier.weight(1f),
             )
             if (items.isNotEmpty()) {
-                TextButton(onClick = onEmptyTrash) {
+                TextButton(onClick = { pendingDelete = -1L }) {
                     Text(stringResource(R.string.trash_empty_all), color = Crimson)
                 }
             }
@@ -90,7 +103,7 @@ fun TrashScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(items, key = { it.id }) { item ->
-                    TrashRow(item = item, onRestore = onRestore, onPurge = onPurge)
+                    TrashRow(item = item, onRestore = onRestore, onPurge = { pendingDelete = it })
                 }
             }
         }
@@ -105,7 +118,7 @@ private fun TrashRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val deletedDate = item.deletedAtMs?.let {
-        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(it))
+        SimpleDateFormat("yyyy-MM-dd HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0]).format(Date(it))
     }
 
     Column(

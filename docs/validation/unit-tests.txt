@@ -1,0 +1,4 @@
+com.yishenghuang.sealrec.core.pipeline.CrashRecoveryTest: tests=3, failures=0, errors=0, skipped=0, seconds=0.054
+com.yishenghuang.sealrec.core.verify.VerifyUseCaseLogicTest: tests=1, failures=0, errors=0, skipped=0, seconds=0.046
+com.yishenghuang.sealrec.core.wav.WavSafetyTest: tests=7, failures=0, errors=0, skipped=0, seconds=1.696
+com.yishenghuang.sealrec.core.wav.WavSealChunkTest: tests=4, failures=0, errors=0, skipped=0, seconds=0.004

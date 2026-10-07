@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
@@ -52,7 +53,7 @@ fun VerifyScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Foam, Mist)))
+            .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface)))
             .sealContentColumn()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
@@ -62,7 +63,7 @@ fun VerifyScreen(
         Text(
             stringResource(R.string.verify_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = Slate,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(onClick = { picker.launch(arrayOf("audio/*", "audio/wav", "*/*")) }) {
             Text(stringResource(R.string.verify_pick))
@@ -76,12 +77,18 @@ fun VerifyScreen(
 
 @Composable
 fun ReportCard(report: IntegrityReport) {
-    val (title, color) = when (report.status) {
+    val (title, lightColor) = when (report.status) {
         IntegrityStatus.Intact -> stringResource(R.string.status_intact) to IntactGreen
         IntegrityStatus.Tampered -> stringResource(R.string.status_tampered) to Crimson
         IntegrityStatus.BadSignature -> stringResource(R.string.status_bad_sig) to Amber
         IntegrityStatus.NotSealRec -> stringResource(R.string.status_not_seal) to SignalGray
     }
+    val color = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) when (report.status) {
+        IntegrityStatus.Intact -> Color(0xFF77D6A1)
+        IntegrityStatus.Tampered -> Color(0xFFFF8A80)
+        IntegrityStatus.BadSignature -> Color(0xFFFFD180)
+        IntegrityStatus.NotSealRec -> Color(0xFFB8C9D0)
+    } else lightColor
 
     Column(
         modifier = Modifier
@@ -91,34 +98,36 @@ fun ReportCard(report: IntegrityReport) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title, style = MaterialTheme.typography.titleLarge, color = color)
-        Text(report.message, style = MaterialTheme.typography.bodyLarge)
+        if (report.status == IntegrityStatus.Intact) {
+            Text(stringResource(R.string.about_proves_body), style = MaterialTheme.typography.bodyMedium)
+        }
         Text(report.fileName, style = MaterialTheme.typography.labelLarge)
         report.deviceTimeUtcMs?.let {
-            val formatted = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val formatted = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
                 .format(Date(it))
-            Text("DeviceTime: $formatted", style = MaterialTheme.typography.labelSmall, color = Slate)
+            Text("DeviceTime: $formatted", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 stringResource(R.string.device_time_disclaimer),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         report.keyFingerprintHex?.let {
-            Text("Key: $it", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.key_fingerprint, it), style = MaterialTheme.typography.labelLarge)
         }
         report.embeddedHashHex?.let {
-            Text("Embedded hash: $it", style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.report_embedded_hash, it), style = MaterialTheme.typography.labelSmall)
         }
         report.computedHashHex?.let {
-            Text("Computed hash: $it", style = MaterialTheme.typography.labelSmall)
+            Text(stringResource(R.string.report_computed_hash, it), style = MaterialTheme.typography.labelSmall)
         }
         report.headerHexPreview?.let {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Header Hex", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.report_header), style = MaterialTheme.typography.titleLarge)
             Text(
                 it.chunked(32).joinToString("\n"),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF1A3038),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

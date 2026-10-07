@@ -39,6 +39,8 @@ data class WavLayout(
  * Writes / reads PCM WAV files with an optional custom "seal" chunk between fmt and data.
  */
 object WavIO {
+    // Keep offsets compatible with the player, and leave ample room for RIFF metadata.
+    const val MAX_PCM_BYTES = 2_000_000_000L
 
     fun write(
         output: File,
@@ -46,6 +48,8 @@ object WavIO {
         format: WavFormat = WavFormat(),
         seal: SealPayload? = null,
     ) {
+        validateFormat(format)
+        require(pcm.size % format.blockAlign == 0) { "Incomplete PCM frame" }
         output.parentFile?.mkdirs()
         RandomAccessFile(output, "rw").use { raf ->
             raf.setLength(0)
@@ -92,9 +96,60 @@ object WavIO {
         output: File,
         format: WavFormat = WavFormat(),
         seal: SealPayload,
+        pcmBytes: Long = rawFile.length(),
     ) {
-        val pcm = rawFile.readBytes()
-        write(output, pcm, format, seal)
+        validateFormat(format)
+        val size = pcmBytes
+        require(size in 1..MAX_PCM_BYTES && size <= rawFile.length() && size % format.blockAlign == 0L) { "Invalid PCM length" }
+        require(!output.exists()) { "Output already exists" }
+        val pending = File(output.parentFile, output.name + ".pending")
+        require(!pending.exists()) { "Pending output already exists" }
+        try {
+            write(pending, ByteArray(0), format, seal)
+            RandomAccessFile(pending, "rw").use { raf ->
+                val headerSize = raf.length()
+                raf.seek(headerSize - 4)
+                writeIntLe(raf, size.toInt())
+                rawFile.inputStream().use { input ->
+                    val buffer = ByteArray(64 * 1024)
+                    var remaining = size
+                    while (remaining > 0) {
+                        val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                        check(count > 0) { "PCM truncated while saving" }
+                        raf.write(buffer, 0, count)
+                        remaining -= count
+                    }
+                }
+                if (size % 2 == 1L) raf.write(0)
+                raf.seek(4)
+                writeIntLe(raf, (raf.length() - 8).toInt())
+                raf.fd.sync()
+            }
+            check(pending.renameTo(output)) { "Unable to finish WAV" }
+        } finally {
+            pending.delete()
+        }
+    }
+
+    fun hashPcm(file: File, layout: WavLayout = inspect(file)): ByteArray {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        RandomAccessFile(file, "r").use { raf ->
+            raf.seek(layout.dataOffset)
+            val buffer = ByteArray(64 * 1024)
+            var remaining = layout.dataSize
+            while (remaining > 0) {
+                val count = minOf(buffer.size, remaining)
+                raf.readFully(buffer, 0, count)
+                digest.update(buffer, 0, count)
+                remaining -= count
+            }
+        }
+        return digest.digest()
+    }
+
+    private fun validateFormat(format: WavFormat) {
+        require(format.channels in 1..2 && format.bitsPerSample in listOf(8, 16) &&
+            format.sampleRate in 8_000..192_000) { "Unsupported PCM format" }
     }
 
     fun parse(file: File): WavParseResult {
@@ -114,12 +169,13 @@ object WavIO {
 
     fun inspect(file: File): WavLayout {
         RandomAccessFile(file, "r").use { raf ->
-            val headerPreviewBytes = ByteArray(minOf(64, raf.length().toInt()))
+            val headerPreviewBytes = ByteArray(minOf(64L, raf.length()).toInt())
             raf.readFully(headerPreviewBytes)
             raf.seek(0)
 
             require(readFourCc(raf) == "RIFF") { "Not a RIFF file" }
-            readIntLe(raf) // riff size
+            val riffSize = readIntLe(raf).toLong() and 0xffffffffL
+            require(riffSize + 8 == raf.length()) { "Invalid RIFF length" }
             require(readFourCc(raf) == "WAVE") { "Not a WAVE file" }
 
             var format: WavFormat? = null
@@ -128,30 +184,36 @@ object WavIO {
             var dataSize = -1
 
             while (raf.filePointer < raf.length()) {
-                if (raf.filePointer + 8 > raf.length()) break
+                require(raf.filePointer + 8 <= raf.length()) { "Truncated chunk header" }
                 val id = readFourCc(raf)
                 val size = readIntLe(raf)
                 require(size >= 0) { "Negative chunk size" }
                 val dataStart = raf.filePointer
+                require(dataStart + size + (size % 2) <= raf.length()) { "Truncated chunk" }
                 when (id) {
                     "fmt " -> {
+                        require(format == null && size >= 16) { "Invalid or duplicate fmt chunk" }
                         val audioFormat = readShortLe(raf).toInt() and 0xFFFF
                         require(audioFormat == 1) { "Only PCM WAV supported" }
                         val channels = readShortLe(raf).toInt() and 0xFFFF
                         val sampleRate = readIntLe(raf)
-                        readIntLe(raf) // byte rate
-                        readShortLe(raf) // block align
+                        val byteRate = readIntLe(raf)
+                        val align = readShortLe(raf).toInt() and 0xffff
                         val bits = readShortLe(raf).toInt() and 0xFFFF
                         format = WavFormat(sampleRate, channels, bits)
+                        validateFormat(format)
+                        require(byteRate == format.byteRate && align == format.blockAlign) { "Invalid PCM rates" }
                         raf.seek(dataStart + size + (size % 2))
                     }
                     SealChunkCodec.CHUNK_ID -> {
+                        require(seal == null && size in 1..200_000) { "Invalid or duplicate seal chunk" }
                         val bytes = ByteArray(size)
                         raf.readFully(bytes)
                         seal = SealChunkCodec.decode(bytes)
                         raf.seek(dataStart + size + (size % 2))
                     }
                     "data" -> {
+                        require(dataOffset < 0 && size <= MAX_PCM_BYTES) { "Invalid or duplicate data chunk" }
                         dataOffset = dataStart
                         dataSize = size
                         raf.seek(dataStart + size + (size % 2))
@@ -164,6 +226,7 @@ object WavIO {
 
             requireNotNull(format) { "Missing fmt chunk" }
             require(dataOffset >= 0 && dataSize >= 0) { "Missing data chunk" }
+            require(dataSize % format.blockAlign == 0) { "Incomplete PCM frame" }
 
             return WavLayout(
                 format = format,

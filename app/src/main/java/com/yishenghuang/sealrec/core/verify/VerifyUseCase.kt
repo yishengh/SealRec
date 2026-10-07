@@ -46,7 +46,7 @@ class VerifyUseCase(
         }
 
         val parsed = try {
-            WavIO.parse(file)
+            WavIO.inspect(file)
         } catch (e: Exception) {
             return IntegrityReport(
                 status = IntegrityStatus.NotSealRec,
@@ -76,7 +76,7 @@ class VerifyUseCase(
             )
         }
 
-        val computed = Sha256Hasher.digest(parsed.pcmData)
+        val computed = WavIO.hashPcm(file, parsed)
         val computedHex = Fingerprint.toHex(computed)
         val embeddedHex = Fingerprint.toHex(seal.pcmSha256)
 

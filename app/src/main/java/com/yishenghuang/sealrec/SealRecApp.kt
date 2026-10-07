@@ -31,6 +31,7 @@ class SealRecApp : Application() {
 
     private val _engine = MutableStateFlow<SealEngine?>(null)
     val engine: StateFlow<SealEngine?> = _engine.asStateFlow()
+    val recordingSessionActive = MutableStateFlow(false)
 
     private val _recordingFinished = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val recordingFinished: SharedFlow<String> = _recordingFinished.asSharedFlow()
@@ -41,7 +42,6 @@ class SealRecApp : Application() {
     override fun onCreate() {
         super.onCreate()
         keystore = KeystoreManager()
-        keystore.ensureKey()
         repository = RecordingRepository(this)
         settingsRepository = SettingsRepository(this)
         appScope.launch {
@@ -67,5 +67,13 @@ class SealRecApp : Application() {
 
     fun emitMessage(message: String) {
         _userMessages.tryEmit(message)
+    }
+
+    fun localizedString(@androidx.annotation.StringRes id: Int, vararg args: Any): String {
+        val locales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+        if (locales.isEmpty) return getString(id, *args)
+        val config = android.content.res.Configuration(resources.configuration)
+        config.setLocales(android.os.LocaleList.forLanguageTags(locales.toLanguageTags()))
+        return createConfigurationContext(config).getString(id, *args)
     }
 }

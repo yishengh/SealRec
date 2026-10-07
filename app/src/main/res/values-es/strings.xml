@@ -23,7 +23,7 @@
     <string name="export_ok">Exportado a Music/SealRec</string>
     <string name="export_fail">Error al exportar</string>
     <string name="offline_badge">Totalmente sin red · sin permiso de internet</string>
-    <string name="brand_subtitle">Sellado con clave de hardware · verificación en el dispositivo</string>
+    <string name="brand_subtitle">Firma del dispositivo · verificación local</string>
     <string name="library_title">Biblioteca</string>
     <string name="library_subtitle">Archivos sellados locales · verificación sin conexión</string>
     <string name="library_empty">Aún no hay grabaciones</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">Vaciar papelera</string>
     <string name="about_title">Acerca de SealRec</string>
     <string name="about_proves_title">Qué demuestra SealRec</string>
-    <string name="about_proves_body">Cada grabación se hashea muestra a muestra y se firma con una clave respaldada por hardware que no sale de este dispositivo. Un resultado VERDE prueba que los bytes de audio son exactamente los del micrófono y que la firma es de la clave de este dispositivo.</string>
+    <string name="about_proves_body">El hash PCM coincide con la firma de la clave incorporada. No identifica a una persona ni un dispositivo. El formato y la fecha no están firmados. Las grabaciones reparadas se sellan al recuperarlas. Los WAV no están cifrados.</string>
     <string name="about_not_title">Qué NO demuestra</string>
     <string name="about_not_body">SealRec no puede demostrar quién habló, dónde ocurrió ni que el sonido no fue escenificado o reproducido por un altavoz. Solo demuestra que el archivo digital no se alteró desde el sellado.</string>
     <string name="about_time_title">Sobre DeviceTime</string>
     <string name="about_time_body">La marca de tiempo del sello viene del reloj local del dispositivo, no de una autoridad de sellado de tiempo (TSA). Si el reloj estaba mal, el tiempo sellado también. Úsalo como pista, no como prueba de cuándo se grabó.</string>
     <string name="about_contact_title">Contacto y privacidad</string>
     <string name="about_privacy">Política de privacidad</string>
+    <string name="record_interrupted">Grabación pausada: entrada de audio o almacenamiento no disponible. Soluciona el problema y reanuda o guarda.</string>
+    <string name="operation_failed">No se pudo completar la acción. Comprueba los permisos, el espacio y el archivo e inténtalo de nuevo.</string>
+    <string name="action_play">Reproducir</string>
+    <string name="action_export">Exportar</string>
+    <string name="action_share">Compartir</string>
+    <string name="action_back">Volver</string>
+    <string name="action_trash">Mover a la papelera</string>
+    <string name="playback_position">Posición de reproducción</string>
+    <string name="confirm_purge">¿Eliminar definitivamente? No se puede deshacer.</string>
+    <string name="permission_mic_settings">Permite el micrófono en los ajustes de Android y pulsa Grabar de nuevo. No se grabará hasta obtener permiso.</string>
+    <string name="report_embedded_hash">Hash incorporado: %1$s</string>
+    <string name="report_computed_hash">Hash calculado: %1$s</string>
+    <string name="report_header">Cabecera hexadecimal</string>
 </resources>

@@ -26,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -38,114 +39,161 @@ class SealRecordService : Service() {
     private lateinit var recordingFocus: RecordingAudioFocus
     private var exclusiveFocusHeld = false
 
+    private val commands = kotlinx.coroutines.channels.Channel<String>(32)
+    private var exclusive = false
+    private var closing = false
+    private val cpuLock by lazy {
+        getSystemService(android.os.PowerManager::class.java).newWakeLock(
+            android.os.PowerManager.PARTIAL_WAKE_LOCK, "SealRec:Capture").apply { setReferenceCounted(false) }
+    }
+    private fun holdCpu() {
+        if (!cpuLock.isHeld) cpuLock.acquire(TimeUnit.HOURS.toMillis(24))
+    }
+    private fun releaseCpu() { if (cpuLock.isHeld) cpuLock.release() }
+
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        recordingFocus = RecordingAudioFocus(this)
-        val app = application as SealRecApp
-        scope.launch(Dispatchers.IO) {
-            val settings = app.settingsRepository.settings.first()
-            val config = app.settingsRepository.audioConfig(settings.quality)
-            engine = SealEngine(
-                scope = scope,
-                keystore = app.keystore,
-                audioConfig = config,
-            )
-            app.bindEngine(engine)
-            if (!settings.allowNotificationSoundsWhileRecording) {
-                exclusiveFocusHeld = recordingFocus.requestExclusive()
-            }
-            engine.elapsedMs.collectLatest { ms ->
-                if (engine.state.value == SealEngineState.Recording ||
-                    engine.state.value == SealEngineState.Paused
-                ) {
-                    updateNotification(ms, engine.state.value)
+        recordingFocus = RecordingAudioFocus(this) {
+            commands.trySend(ACTION_PAUSE)
+            (application as SealRecApp).emitMessage((application as SealRecApp).localizedString(R.string.record_interrupted))
+        }
+        scope.launch {
+            for (action in commands) {
+                if (closing) continue
+                val app = application as SealRecApp
+                try {
+                    when (action) {
+                        ACTION_START -> {
+                            if (::engine.isInitialized) continue
+                            val settings = app.settingsRepository.settings.first()
+                            exclusive = !settings.allowNotificationSoundsWhileRecording
+                            engine = SealEngine(scope, app.keystore, app.settingsRepository.audioConfig(settings.quality))
+                            app.bindEngine(engine)
+                            check(recordingFocus.request(exclusive)) { "Audio focus denied" }
+                            exclusiveFocusHeld = true
+                            checkNoCall()
+                            holdCpu()
+                            engine.start(app.repository.newRawFile())
+                            scope.launch {
+                                kotlinx.coroutines.flow.combine(engine.elapsedMs, engine.state) { ms, state -> (ms / 1000) to state }
+                                    .distinctUntilChanged()
+                                    .collect { (seconds, state) ->
+                                        if (!closing) updateNotification(seconds * 1000, state)
+                                        val audio = getSystemService(android.media.AudioManager::class.java)
+                                        if (state == SealEngineState.Recording && (audio.mode == android.media.AudioManager.MODE_IN_CALL ||
+                                                audio.mode == android.media.AudioManager.MODE_IN_COMMUNICATION)) {
+                                            commands.trySend(ACTION_PAUSE)
+                                            app.emitMessage((application as SealRecApp).localizedString(R.string.record_interrupted))
+                                        }
+                                    }
+                            }
+                            scope.launch {
+                                engine.error.collect { failed ->
+                                    if (failed) { releaseRecordingFocus(); releaseCpu(); app.emitMessage((application as SealRecApp).localizedString(R.string.record_interrupted)) }
+                                }
+                            }
+                        }
+                        ACTION_PAUSE -> if (::engine.isInitialized) {
+                            engine.pause()
+                            releaseRecordingFocus()
+                            releaseCpu()
+                        }
+                        ACTION_RESUME -> if (::engine.isInitialized && engine.state.value == SealEngineState.Paused) {
+                            check(recordingFocus.request(exclusive)) { "Audio focus denied" }
+                            exclusiveFocusHeld = true
+                            checkNoCall()
+                            holdCpu()
+                            engine.currentRawFile?.let { engine.start(it) }
+                        }
+                        ACTION_STOP -> {
+                            if (::engine.isInitialized && engine.state.value != SealEngineState.Idle) {
+                                holdCpu()
+                                val wav = app.repository.newWavFile()
+                                val payload = engine.stopAndSeal(wav)
+                                app.repository.registerSealedFile(wav,
+                                    com.yishenghuang.sealrec.core.wav.WavIO.inspect(wav).durationMs.toLong(),
+                                    Fingerprint.toHex(payload.keyFingerprint), payload.deviceTimeUtcMs)
+                                engine.acknowledgeSaved()
+                                app.onRecordingFinished(wav.absolutePath)
+                            }
+                            finishRecording()
+                        }
+                        ACTION_CANCEL -> {
+                            if (::engine.isInitialized) engine.close(discard = true)
+                            finishRecording()
+                        }
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: EmptyRecordingException) {
+                    app.emitMessage((application as SealRecApp).localizedString(R.string.record_too_short))
+                    finishRecording()
+                } catch (_: Exception) {
+                    app.emitMessage((application as SealRecApp).localizedString(R.string.record_failed))
+                    if (action != ACTION_RESUME) finishRecording() else { releaseRecordingFocus(); releaseCpu() }
                 }
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> {
-                startAsForeground()
-                scope.launch(Dispatchers.IO) {
-                    // Ensure engine is ready
-                    while (!::engine.isInitialized) {
-                        kotlinx.coroutines.delay(20)
-                    }
-                    val repo = (application as SealRecApp).repository
-                    val raw = repo.newRawFile()
-                    engine.start(raw)
-                    updateNotification(0L, SealEngineState.Recording)
-                }
-            }
-            ACTION_PAUSE -> if (::engine.isInitialized) engine.pause()
-            ACTION_RESUME -> {
-                if (::engine.isInitialized) {
-                    val raw = engine.currentRawFile
-                    if (raw != null) engine.start(raw)
-                }
-            }
-            ACTION_STOP -> {
-                scope.launch(Dispatchers.IO) {
-                    while (!::engine.isInitialized) {
-                        kotlinx.coroutines.delay(20)
-                    }
-                    val app = application as SealRecApp
-                    try {
-                        val wav = app.repository.newWavFile()
-                        val elapsed = engine.elapsedMs.value
-                        val payload = engine.stopAndSeal(wav)
-                        app.repository.registerSealedFile(
-                            wav = wav,
-                            durationMs = elapsed,
-                            keyFingerprintHex = Fingerprint.toHex(payload.keyFingerprint),
-                            deviceTimeUtcMs = payload.deviceTimeUtcMs,
-                        )
-                        app.onRecordingFinished(wav.absolutePath)
-                    } catch (_: EmptyRecordingException) {
-                        app.emitMessage(getString(R.string.record_too_short))
-                    } catch (e: Exception) {
-                        app.emitMessage(e.message ?: getString(R.string.record_failed))
-                    } finally {
-                        releaseRecordingFocus()
-                        stopForeground(STOP_FOREGROUND_REMOVE)
-                        stopSelf()
-                    }
-                }
-            }
-            ACTION_CANCEL -> {
-                if (::engine.isInitialized) engine.cancel()
-                releaseRecordingFocus()
-                stopForeground(STOP_FOREGROUND_REMOVE)
+        val action = intent?.action
+        if (action == ACTION_START && !closing) {
+            (application as SealRecApp).recordingSessionActive.value = true
+            try { startAsForeground() } catch (_: Exception) {
+                (application as SealRecApp).recordingSessionActive.value = false
+                (application as SealRecApp).emitMessage((application as SealRecApp).localizedString(R.string.record_failed))
                 stopSelf()
+                return START_NOT_STICKY
             }
         }
-        return START_STICKY
+        if (action != null && !commands.trySend(action).isSuccess) {
+            (application as SealRecApp).emitMessage((application as SealRecApp).localizedString(R.string.record_failed))
+        }
+        if (action == null) stopSelf()
+        // Never restart microphone capture without an explicit user action.
+        return START_NOT_STICKY
+    }
+
+    private suspend fun finishRecording() {
+        closing = true
+        try { if (::engine.isInitialized) engine.close() } finally {
+            releaseCpu()
+            releaseRecordingFocus()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        commands.close()
+        releaseCpu()
+        releaseRecordingFocus()
         if (::engine.isInitialized) {
             (application as SealRecApp).unbindEngine(engine)
+            // Cleanup must survive cancellation of the service scope.
+            scope.launch(kotlinx.coroutines.NonCancellable) { runCatching { engine.close() } }
         }
-        releaseRecordingFocus()
+        (application as SealRecApp).recordingSessionActive.value = false
         scope.cancel()
         super.onDestroy()
     }
 
     private fun releaseRecordingFocus() {
-        if (exclusiveFocusHeld) {
-            recordingFocus.abandon()
-            exclusiveFocusHeld = false
-        }
+        if (::recordingFocus.isInitialized) recordingFocus.abandon()
+        exclusiveFocusHeld = false
     }
 
+    private fun checkNoCall() {
+        val mode = getSystemService(android.media.AudioManager::class.java).mode
+        check(mode != android.media.AudioManager.MODE_IN_CALL && mode != android.media.AudioManager.MODE_IN_COMMUNICATION)
+    }
     private fun startAsForeground() {
         val notification = buildNotification(0L, SealEngineState.Recording)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
@@ -171,24 +219,25 @@ class SealRecordService : Service() {
         val pauseResumeAction = if (state == SealEngineState.Paused) {
             NotificationCompat.Action(
                 0,
-                getString(R.string.action_resume),
+                (application as SealRecApp).localizedString(R.string.action_resume),
                 servicePending(ACTION_RESUME, 1),
             )
         } else {
             NotificationCompat.Action(
                 0,
-                getString(R.string.action_pause),
+                (application as SealRecApp).localizedString(R.string.action_pause),
                 servicePending(ACTION_PAUSE, 2),
             )
         }
         val stopAction = NotificationCompat.Action(
             0,
-            getString(R.string.action_stop),
+            (application as SealRecApp).localizedString(R.string.action_stop),
             servicePending(ACTION_STOP, 3),
         )
         val title = when (state) {
-            SealEngineState.Paused -> getString(R.string.notif_paused)
-            else -> getString(R.string.notif_recording)
+            SealEngineState.Paused -> (application as SealRecApp).localizedString(R.string.notif_paused)
+            SealEngineState.Finalizing -> (application as SealRecApp).localizedString(R.string.state_finalizing)
+            else -> (application as SealRecApp).localizedString(R.string.notif_recording)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -197,8 +246,12 @@ class SealRecordService : Service() {
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .addAction(pauseResumeAction)
-            .addAction(stopAction)
+            .apply {
+                if (state == SealEngineState.Recording || state == SealEngineState.Paused) {
+                    addAction(pauseResumeAction)
+                    addAction(stopAction)
+                }
+            }
             .build()
     }
 
@@ -216,7 +269,7 @@ class SealRecordService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                getString(R.string.notif_channel),
+                (application as SealRecApp).localizedString(R.string.notif_channel),
                 NotificationManager.IMPORTANCE_LOW,
             )
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager

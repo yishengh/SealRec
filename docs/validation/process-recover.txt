@@ -1,0 +1,7 @@
+
+com.yishenghuang.sealrec.ProcessRecoveryInstrumentedTest:
+com.yishenghuang.sealrec.ProcessRecoveryInstrumentedTest:.
+
+Time: 0.994
+
+OK (2 tests)

@@ -26,14 +26,23 @@ data class AudioConfig(
     }
 }
 
+interface PcmCapture {
+    val bufferSizeBytes: Int
+    fun start()
+    fun read(buffer: ByteArray): Int
+    fun stop()
+}
+
 class AudioRecordCapture(
     private val config: AudioConfig = AudioConfig(),
-) {
+) : PcmCapture {
     private var recorder: AudioRecord? = null
 
-    val bufferSizeBytes: Int get() = config.minBufferSize()
+    override val bufferSizeBytes: Int get() = config.minBufferSize()
 
-    fun start() {
+    // The service catches SecurityException and retains recoverable PCM if permission is revoked.
+    @android.annotation.SuppressLint("MissingPermission")
+    @Synchronized override fun start() {
         stop()
         val rec = AudioRecord(
             MediaRecorder.AudioSource.MIC,
@@ -42,22 +51,26 @@ class AudioRecordCapture(
             config.encoding,
             bufferSizeBytes * 2,
         )
+        recorder = rec
         check(rec.state == AudioRecord.STATE_INITIALIZED) {
             "AudioRecord failed to initialize"
         }
         rec.startRecording()
-        recorder = rec
+        check(rec.recordingState == AudioRecord.RECORDSTATE_RECORDING) { "Microphone unavailable" }
     }
 
     /**
      * Reads PCM into [buffer]. Returns bytes read, or negative on error / 0 on nothing.
      */
-    fun read(buffer: ByteArray): Int {
+    @Synchronized override fun read(buffer: ByteArray): Int {
         val rec = recorder ?: return -1
-        return rec.read(buffer, 0, buffer.size)
+        if (android.os.Build.VERSION.SDK_INT >= 29 && rec.activeRecordingConfiguration?.isClientSilenced == true) {
+            return AudioRecord.ERROR_INVALID_OPERATION
+        }
+        return rec.read(buffer, 0, buffer.size, AudioRecord.READ_NON_BLOCKING)
     }
 
-    fun stop() {
+    @Synchronized override fun stop() {
         recorder?.run {
             try {
                 stop()

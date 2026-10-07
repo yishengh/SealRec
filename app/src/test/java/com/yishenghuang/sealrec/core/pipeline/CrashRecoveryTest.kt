@@ -6,6 +6,19 @@ import org.junit.Test
 import java.io.File
 
 class CrashRecoveryTest {
+    @org.junit.Rule @JvmField val temp = org.junit.rules.TemporaryFolder()
+
+    @Test fun recoveryPersistsEverySupportedSampleRate() {
+        for (rate in listOf(16000, 44100, 48000)) {
+            val raw = temp.newFile("$rate.raw")
+            val format = com.yishenghuang.sealrec.core.wav.WavFormat(rate)
+            CrashRecovery.saveFormat(raw, format)
+            assertEquals(format, CrashRecovery.readFormat(raw))
+            CrashRecovery.discard(raw)
+            assertTrue(!raw.exists())
+            assertTrue(!File(raw.parentFile, raw.name + ".format").exists())
+        }
+    }
 
     @Test
     fun listIncomplete_onlyNonEmptyRaw() {

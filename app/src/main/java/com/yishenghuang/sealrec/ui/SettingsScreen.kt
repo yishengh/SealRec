@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.yishenghuang.sealrec.R
 import com.yishenghuang.sealrec.data.AppLanguage
@@ -49,6 +51,7 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val notificationLabel = stringResource(R.string.settings_notif_sounds)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -124,6 +127,7 @@ fun SettingsScreen(
                         .padding(end = 12.dp),
                 )
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = notificationLabel },
                     checked = settings.allowNotificationSoundsWhileRecording,
                     onCheckedChange = onNotifSounds,
                     colors = SwitchDefaults.colors(checkedTrackColor = scheme.primary),

@@ -23,7 +23,7 @@
     <string name="export_ok">Music/SealRec に書き出しました</string>
     <string name="export_fail">書き出しに失敗しました</string>
     <string name="offline_badge">完全オフライン · ネットワーク権限なし</string>
-    <string name="brand_subtitle">ハードウェアキー封印 · 端末内検証</string>
+    <string name="brand_subtitle">端末の鍵で署名 · 端末内で検証</string>
     <string name="library_title">ライブラリ</string>
     <string name="library_subtitle">ローカル封印ファイル · いつでもオフライン検証</string>
     <string name="library_empty">録音はまだありません</string>
@@ -74,11 +74,24 @@
     <string name="trash_empty_all">ゴミ箱を空にする</string>
     <string name="about_title">SealRec について</string>
     <string name="about_proves_title">SealRec が証明できること</string>
-    <string name="about_proves_body">録音中にサンプル単位でハッシュし、この端末から離れないハードウェア鍵で署名します。緑の検証結果は、音声バイトがマイク取得時と同一であり、署名がこの端末の鍵によることを証明します。</string>
+    <string name="about_proves_body">PCM ハッシュと埋め込み鍵の署名が一致します。人物や端末の身元は証明しません。音声形式と日時は署名対象外です。修復した録音は復元時に署名されます。WAV は暗号化されません。</string>
     <string name="about_not_title">証明できないこと</string>
     <string name="about_not_body">話者の身元、録音場所、音そのものが演技やスピーカー再生でないことは証明できません。封印後にデジタルファイルが改ざんされていないことだけを証明します。</string>
     <string name="about_time_title">DeviceTime について</string>
     <string name="about_time_body">封印に埋め込まれた時刻は端末のローカル時計由来で、信頼できる時刻認証局（TSA）ではありません。時計がずれていれば封印時刻もずれます。録音時刻の証明ではなく参考情報として扱ってください。</string>
     <string name="about_contact_title">連絡先とプライバシー</string>
     <string name="about_privacy">プライバシーポリシー</string>
+    <string name="record_interrupted">録音を一時停止しました。音声入力または空き容量を確認し、再開するか保存してください。</string>
+    <string name="operation_failed">操作を完了できません。権限、空き容量、ファイルを確認して再試行してください。</string>
+    <string name="action_play">再生</string>
+    <string name="action_export">エクスポート</string>
+    <string name="action_share">共有</string>
+    <string name="action_back">戻る</string>
+    <string name="action_trash">ごみ箱へ移動</string>
+    <string name="playback_position">再生位置</string>
+    <string name="confirm_purge">完全に削除しますか？元に戻せません。</string>
+    <string name="permission_mic_settings">Android のアプリ設定でマイクを許可してから録音を押してください。許可されるまで録音しません。</string>
+    <string name="report_embedded_hash">埋め込みハッシュ：%1$s</string>
+    <string name="report_computed_hash">計算ハッシュ：%1$s</string>
+    <string name="report_header">ヘッダー（16進数）</string>
 </resources>
